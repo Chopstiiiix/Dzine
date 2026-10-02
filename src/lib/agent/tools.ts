@@ -190,9 +190,17 @@ export const COMPOSE_TOOL: Anthropic.Tool = {
       headline: { type: "string", description: "The main title, exactly as the user wrote it. Line breaks are handled for you." },
       accent: { type: "string", description: "Optional contrasting word or phrase: the script word in a lockup, 'Night of' over 'WORSHIP', or a big number such as '14.11'." },
       kicker: { type: "string", description: "Optional small line above the title, e.g. 'CLUB EKO PRESENTS'." },
-      subhead: { type: "string", description: "Optional supporting line, e.g. the line-up: 'DJs Tobi Beats + Ama K'." },
+      subhead: { type: "string", description: "Optional supporting line, e.g. the line-up 'DJs Tobi Beats + Ama K', or the two sides of a fixture 'Eagles vs Lions'." },
       details: { type: "array", items: { type: "string" }, description: "Event facts, each short: date, time, venue, price. Every fact the user gave must appear here or elsewhere." },
       details2: { type: "string", description: "Optional second info line for treatments with two info rows (luxury, swiss)." },
+      date: { type: "string", description: "Event date for date blocks and badges, short, e.g. 'SAT 14 NOV'. Also keep it in details if the treatment has no date block." },
+      host: { type: "string", description: "Minister, speaker, host or artist name for a name plate (minister treatment)." },
+      price: { type: "string", description: "Price or offer for a badge, e.g. '₦5,000', '30% OFF', '$20 ENTRY'." },
+      items: {
+        type: "array",
+        items: { type: "string" },
+        description: "List entries: menu dishes ('Jollof Rice — ₦3,500'), services, courses, classes or opening offers. Only what the user gave.",
+      },
       colors: {
         type: "object",
         properties: { headline: { type: "string" }, accent: { type: "string" }, text: { type: "string" } },

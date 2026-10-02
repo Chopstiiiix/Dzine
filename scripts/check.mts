@@ -37,19 +37,47 @@ assert.equal(pickTreatments("a hip hop mixtape cover").length, 3);
 
 assert.deepEqual(splitLines("MIDNIGHT LAGOS", 2), ["MIDNIGHT", "LAGOS"]);
 assert.deepEqual(splitLines("A NIGHT OF WORSHIP AND PRAISE", 3).length, 3);
+const overlaps: string[] = [];
 // Template mode: every fact reaches the canvas, in every treatment and position, and nothing leaves it.
 for (const t of TREATMENTS) for (const position of ["top", "middle", "bottom"] as const) {
   const { design } = composeDesign(
-    { treatment: t.id, position, headline: "MIDNIGHT LAGOS", kicker: "CLUB EKO PRESENTS", subhead: "DJs Tobi Beats + Ama K", details: ["SAT 14 NOV", "10PM TILL LATE"] },
+    {
+      treatment: t.id, position, headline: "MIDNIGHT LAGOS", kicker: "CLUB EKO PRESENTS", subhead: "DJs Tobi Beats + Ama K",
+      details: ["SAT 14 NOV", "10PM TILL LATE"], date: "SAT 14 NOV", host: "Pastor Ade", price: "₦5,000", items: ["Jollof Rice — ₦3,500", "Small Chops — ₦2,000"],
+    },
     r,
   );
   const all = JSON.stringify(design.layers).toUpperCase();
-  for (const fact of ["MIDNIGHT", "LAGOS", "TOBI BEATS", "SAT 14 NOV", "10PM TILL LATE", "CLUB EKO"]) {
+  for (const fact of ["MIDNIGHT", "LAGOS", "TOBI BEATS", "SAT 14 NOV", "10PM TILL LATE", "CLUB EKO", "PASTOR ADE", "₦5,000", "JOLLOF RICE", "₦3,500", "SMALL CHOPS"]) {
     assert.ok(all.includes(fact), `${t.id}/${position}: "${fact}" missing`);
   }
-  for (const l of design.layers as { id: string; type: string; y: number; h: number; w: number }[]) {
+  type Box = { id: string; type: string; x: number; y: number; h: number; w: number; rotate?: number; opacity?: number };
+  const boxes = design.layers as Box[];
+  for (const l of boxes) {
     if (l.type === "text" && l.w <= r.w) assert.ok(l.y >= 0 && l.y + l.h <= r.h + 1, `${t.id}/${position}: ${l.id} off canvas`);
   }
+  // No two upright, solid text blocks may overlap (deliberate overlaps are tilted, faint or a known lockup).
+  const solid = boxes.filter((l) => l.type === "text" && !l.rotate && (l.opacity ?? 1) === 1);
+  for (let i = 0; i < solid.length; i++) for (let j = i + 1; j < solid.length; j++) {
+    const a = solid[i], b = solid[j];
+    const ix = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+    const iy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+    if (ix > 2 && iy > 2) overlaps.push(`${t.id}/${position}: "${a.id}" overlaps "${b.id}"`);
+  }
+}
+
+assert.deepEqual(overlaps, [], overlaps.join("\n"));
+
+// Fixtures split into two sides; menus split dish and price.
+{
+  const { design } = composeDesign({ treatment: "matchday", headline: "DERBY DAY", subhead: "Eagles vs Lions", details: ["SAT 4PM"] }, r);
+  const byId = Object.fromEntries((design.layers as { id: string; text?: string }[]).map((l) => [l.id, l.text]));
+  assert.equal(byId.teamA, "Eagles");
+  assert.equal(byId.teamB, "Lions");
+  const menu = composeDesign({ treatment: "menu-list", headline: "MENU", items: ["Jollof Rice — ₦3,500", "Suya: ₦2,000", "Chapman $4"] }, r).design;
+  const m = Object.fromEntries((menu.layers as { id: string; text?: string }[]).map((l) => [l.id, l.text]));
+  assert.equal(m.names, "Jollof Rice\nSuya\nChapman");
+  assert.equal(m.prices, "₦3,500\n₦2,000\n$4");
 }
 
 console.log("checks passed");
