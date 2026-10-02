@@ -1,5 +1,6 @@
 import { runMockAgent } from "@/lib/agent/mock";
 import { type AgentEvent, type AgentInput, runAgent } from "@/lib/agent/run";
+import { TREATMENTS } from "@/lib/agent/type-treatments";
 import { serverConfig } from "@/lib/config";
 import { badRequest, json, notFound, unauthorized } from "@/lib/http";
 import { RATIOS, getRatio } from "@/lib/ratios";
@@ -48,7 +49,8 @@ export async function POST(req: Request) {
       throw err;
     }
     await store.addMessage(project.id, { role: "user", content: text, attachments: attachmentIds });
-    input = { kind: "user", text, attachmentIds };
+    const style = TREATMENTS.some((t) => t.id === body.style) ? String(body.style) : undefined;
+    input = { kind: "user", text, attachmentIds, style };
   }
 
   const encoder = new TextEncoder();

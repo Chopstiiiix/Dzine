@@ -55,10 +55,12 @@ This setup only works on your own machine, not on Vercel.
   images stripped, as a reference for future briefs (`dzine_examples` table, or `.dzine/learned.json` in demo mode).
 - **Fonts:** about 1,700 families (all of Google Fonts plus Fontshare, all free for commercial use) that the
   designer finds with its `search_fonts` tool. Rebuild with `python3 scripts/import_fonts.py`.
-- **Typography playbook:** 14 professional text treatments (chrome, neon, outline echo, giant cropped type,
-  script-over-caps, retro 3D, luxury serif, tape banner, Swiss grid, circular badge and more) written as real layers
-  in `src/lib/agent/type-treatments.ts`. The three that suit a brief are handed to the designer to adapt.
-  Preview them at http://localhost:3000/dev/type while `npm run dev` is running.
+- **Typography playbook:** 26 professional text styles (chrome, neon, outline echo, giant cropped type,
+  script-over-caps, retro 3D, luxury serif, tape banner, Swiss grid, badge, staggered words, distressed stamp, worship
+  glow, kids, brush script, magazine masthead, label stack, vertical title, Y2K gradient, arcade pixel, western,
+  graffiti, minimal lowercase, sale burst, horror drip, festival lineup) in `src/lib/agent/type-treatments.ts`.
+  Users can pick one with the **Style** button next to the chat box, or leave it on Auto. Preview them all at
+  http://localhost:3000/dev/type while `npm run dev` is running.
 - **Template mode** (`DZINE_TEMPLATE_MODE=1`, on in the local setup): the designer only chooses a treatment, the
   words, colours and where the type sits; `src/lib/design/compose.ts` computes every box. Local models write poor
   layout coordinates, so this keeps their output as polished as the gallery. Leave it off with Claude for freer layouts.

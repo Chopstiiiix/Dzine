@@ -7,7 +7,7 @@ import { IMAGE_ASPECTS, type Ratio } from "@/lib/ratios";
 import type { ChatMessage, Pending, Project, Store } from "@/lib/store/types";
 import { describeFont, searchFonts } from "@/lib/fonts";
 import { referenceBlock } from "./examples";
-import { treatmentBlock, treatmentMenu } from "./type-treatments";
+import { TREATMENTS, treatmentBlock, treatmentMenu } from "./type-treatments";
 import { generateImage, removeBackground } from "./images";
 import { findLinks, imageFromLink } from "./links";
 import { SYSTEM_PROMPT, TEMPLATE_MODE_PROMPT, contextBlock } from "./prompt";
@@ -33,7 +33,7 @@ export type AgentEvent =
   | { type: "error"; message: string };
 
 export type AgentInput =
-  | { kind: "user"; text: string; attachmentIds: string[] }
+  | { kind: "user"; text: string; attachmentIds: string[]; /** Typography treatment the user picked. */ style?: string }
   /** `image` is a JPEG data URL of the rendered canvas, or null if the capture failed. */
   | { kind: "review"; image: string | null };
 
@@ -102,6 +102,8 @@ export async function runAgent(run: AgentRun): Promise<void> {
     emit({ type: "asset", asset: a });
   };
 
+  // The style picked for this turn; a review pass inherits it from the paused turn.
+  const pickedStyle = input.kind === "user" ? input.style : project.pending?.style;
   let design = project.design;
   let title = project.title;
   const history = [...(project.history as MessageParam[])];
@@ -153,6 +155,8 @@ export async function runAgent(run: AgentRun): Promise<void> {
       }
     }
     content.push({ type: "text", text: input.text || "(see attachments)" });
+    const picked = input.style && TREATMENTS.find((t) => t.id === input.style);
+    if (picked) content.push({ type: "text", text: `(The user picked the "${picked.name}" text style (${picked.id}) in the style picker. Use it.)` });
     history.push({ role: "user", content });
   }
 
@@ -163,8 +167,8 @@ export async function runAgent(run: AgentRun): Promise<void> {
     input.kind !== "user"
       ? ""
       : serverConfig.templateMode
-        ? treatmentMenu(input.text)
-        : [treatmentBlock(input.text, ratio), await referenceBlock(input.text, ratio)].filter(Boolean).join("\n\n");
+        ? treatmentMenu(input.text, input.style)
+        : [treatmentBlock(input.text, ratio, input.style), await referenceBlock(input.text, ratio)].filter(Boolean).join("\n\n");
   const tools = serverConfig.templateMode
     ? [...TOOLS.filter((t) => t.name === "generate_image" || t.name === "search_fonts"), COMPOSE_TOOL]
     : TOOLS;
@@ -254,7 +258,8 @@ export async function runAgent(run: AgentRun): Promise<void> {
         const ids = new Set(assetById.keys());
         let next: { design: Design; warnings: string[] };
         if (use.name === "compose_design") {
-          const composed = composeDesign(args as ComposeInput, ratio);
+          // A style picked in the picker wins over the model's choice.
+          const composed = composeDesign({ ...(args as ComposeInput), ...(pickedStyle ? { treatment: pickedStyle } : {}) }, ratio);
           next = normalizeDesign(composed.design, ratio, ids);
           next.warnings.unshift(...composed.notes);
           if (typeof args.title === "string" && args.title.trim() && (title === "Untitled design" || !title)) {
@@ -377,6 +382,7 @@ export async function runAgent(run: AgentRun): Promise<void> {
         reviewsLeft: reviewsLeft - 1,
         imagesUsed,
         assistantText,
+        style: pickedStyle,
       });
       emit({ type: "status", text: "Checking the details" });
       emit({ type: "review" });

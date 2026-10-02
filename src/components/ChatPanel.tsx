@@ -4,6 +4,7 @@ import { ArrowUp, Paperclip, X } from "lucide-react";
 import { type ChangeEvent, type DragEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
 import type { Asset } from "@/lib/design/types";
 import type { ChatMessage } from "@/lib/store/types";
+import { type Style, StylePicker } from "./StylePicker";
 
 export type Attachment = { key: string; file: File; preview: string; label: "photo" | "logo" | "reference" };
 
@@ -33,6 +34,9 @@ export function ChatPanel({
   error,
   credits,
   onSend,
+  ratio,
+  style,
+  onStyle,
 }: {
   messages: ChatMessage[];
   assets: Asset[];
@@ -44,6 +48,11 @@ export function ChatPanel({
   credits: number | null;
   /** Resolves to true when the message was accepted and the composer should clear. */
   onSend: (text: string, attachments: Attachment[]) => Promise<boolean>;
+  /** Format id, so style previews match the canvas. */
+  ratio: string;
+  /** The text style the user picked, or null for Auto. */
+  style: Style | null;
+  onStyle: (s: Style | null) => void;
 }) {
   const [text, setText] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -255,6 +264,7 @@ export function ChatPanel({
           >
             <Paperclip size={17} />
           </button>
+          <StylePicker ratio={ratio} value={style} onChange={onStyle} disabled={busy} />
           <textarea
             ref={input}
             rows={1}

@@ -19,6 +19,8 @@ export type Pending = {
   reviewsLeft: number;
   imagesUsed: number;
   assistantText: string;
+  /** Text style the user picked for this turn, kept through the review pass. */
+  style?: string;
 };
 
 export type Project = {

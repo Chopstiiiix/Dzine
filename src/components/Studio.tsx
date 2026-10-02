@@ -11,6 +11,7 @@ import { type Ratio, getRatio } from "@/lib/ratios";
 import type { ChatMessage } from "@/lib/store/types";
 import { type Attachment, ChatPanel } from "./ChatPanel";
 import { PaintingLoader } from "./PaintingLoader";
+import type { Style } from "./StylePicker";
 import { DesignCanvas } from "./DesignCanvas";
 import { Logo } from "./Logo";
 import { type Account, Paywall } from "./Paywall";
@@ -56,6 +57,8 @@ export function Studio({ projectId }: { projectId: string }) {
   const [paywall, setPaywall] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  // ponytail: the picked style lives for this session only; store it on the project if users expect it to stick.
+  const [style, setStyle] = useState<Style | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const nodeRef = useRef<HTMLDivElement>(null);
@@ -265,7 +268,7 @@ export function Studio({ projectId }: { projectId: string }) {
     };
     setMessages((m) => [...m, optimistic]);
     return new Promise<boolean>((resolve) => {
-      void runTurn({ text, attachmentIds: optimistic.attachments, ratio: ratio.id }, (accepted) => {
+      void runTurn({ text, attachmentIds: optimistic.attachments, ratio: ratio.id, style: style?.id }, (accepted) => {
         if (!accepted) setMessages((m) => m.filter((x) => x.id !== optimistic.id));
         resolve(accepted);
       });
@@ -284,7 +287,7 @@ export function Studio({ projectId }: { projectId: string }) {
     const previous = ratio;
     setRatio(next);
     setMessages((m) => [...m, optimistic]);
-    void runTurn({ text, attachmentIds: [], ratio: next.id }, (accepted) => {
+    void runTurn({ text, attachmentIds: [], ratio: next.id, style: style?.id }, (accepted) => {
       if (!accepted) {
         setRatio(previous);
         setMessages((m) => m.filter((x) => x.id !== optimistic.id));
@@ -406,7 +409,7 @@ export function Studio({ projectId }: { projectId: string }) {
         ) : null}
 
         {loaded ? (
-          <ChatPanel messages={messages} assets={assets} draft={draft} status={status} busy={busy} error={error} credits={credits} onSend={send} />
+          <ChatPanel messages={messages} assets={assets} draft={draft} status={status} busy={busy} error={error} credits={credits} onSend={send} ratio={ratio.id} style={style} onStyle={setStyle} />
         ) : (
           <div className="flex flex-1 items-center justify-center text-[13px] text-faint">Loading…</div>
         )}

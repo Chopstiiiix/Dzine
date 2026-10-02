@@ -6,10 +6,11 @@ import type { Ratio } from "@/lib/ratios";
 // this file computes every box. Built for models that write poor coordinates (local Gemma):
 // the result always looks like the playbook gallery, never overlaps, never drops a detail.
 
-type Slot = "headline" | "accent" | "kicker" | "details" | "details2" | "line1" | "line2" | "line3";
+type Slot = "headline" | "accent" | "kicker" | "subhead" | "details" | "details2" | "line1" | "line2" | "line3";
 /** glow / glowText: neon tubes keep a white-hot core and take the colour in their glow. */
 type Role = "headline" | "accent" | "text" | "glow" | "glowText";
-type Map = Record<string, { slot?: Slot; role?: Role }>;
+/** needs: a decorative layer that only makes sense when that slot has text (the sale burst's star). */
+type Map = Record<string, { slot?: Slot; role?: Role; needs?: Slot }>;
 
 /** Which text each treatment layer carries and which palette colour it takes. */
 const SLOTS: Record<string, Map> = {
@@ -39,6 +40,27 @@ const SLOTS: Record<string, Map> = {
   grunge: { stamp: { slot: "headline", role: "headline" }, box: { role: "text" }, sub: { slot: "details", role: "text" } },
   gospel: { glow: {}, accent: { slot: "accent", role: "accent" }, title: { slot: "headline", role: "headline" }, theme: { slot: "details", role: "accent" } },
   kids: { l1: { slot: "line1" }, l2: { slot: "line2" }, age: { slot: "accent" } },
+  "brush-hero": { swoosh: {}, title: { slot: "headline", role: "headline" }, details: { slot: "details", role: "text" } },
+  masthead: {
+    masthead: { slot: "headline", role: "headline" }, rule: { role: "text" }, kicker: { slot: "kicker", role: "text" },
+    coverline: { slot: "accent", role: "accent" }, details: { slot: "details", role: "text" },
+  },
+  "label-stack": { line1: { slot: "line1" }, line2: { slot: "line2" }, line3: { slot: "line3" }, details: { slot: "details", role: "text" } },
+  vertical: { title: { slot: "headline", role: "headline" }, kicker: { slot: "kicker", role: "text" }, rule: { role: "text" }, details: { slot: "details", role: "text" } },
+  y2k: { blob: {}, kicker: { slot: "kicker", role: "text" }, title: { slot: "headline" }, details: { slot: "details", role: "text" } },
+  arcade: { frame: {}, kicker: { slot: "kicker", role: "accent" }, title: { slot: "headline", role: "headline" }, details: { slot: "details", role: "text" } },
+  western: {
+    kicker: { slot: "kicker", role: "text" }, rule1: { role: "text" }, title: { slot: "headline", role: "headline" },
+    rule2: { role: "text" }, details: { slot: "details", role: "text" },
+  },
+  graffiti: { title: { slot: "headline", role: "headline" }, details: { slot: "details", role: "text" } },
+  minimal: { kicker: { slot: "kicker", role: "text" }, title: { slot: "headline", role: "headline" }, dot: { role: "accent" }, details: { slot: "details", role: "text" } },
+  "sale-burst": { burst: { needs: "accent" }, accent: { slot: "accent" }, title: { slot: "headline", role: "headline" }, details: { slot: "details", role: "text" } },
+  horror: { kicker: { slot: "kicker", role: "text" }, title: { slot: "headline", role: "headline" }, details: { slot: "details", role: "text" } },
+  lineup: {
+    kicker: { slot: "kicker", role: "text" }, title: { slot: "headline", role: "headline" }, subhead: { slot: "subhead", role: "text" },
+    details: { slot: "details", role: "text" },
+  },
 };
 
 export const TREATMENT_IDS = TREATMENTS.map((t) => t.id);
@@ -119,7 +141,8 @@ export function composeDesign(input: ComposeInput, ratio: Ratio): { design: Reco
       headline = parts[parts.length - 1];
     }
   }
-  const details = [input.subhead, ...(input.details ?? [])].map((s) => s?.trim()).filter(Boolean) as string[];
+  const hasSubhead = Object.values(map).some((m) => m.slot === "subhead");
+  const details = [hasSubhead ? undefined : input.subhead, ...(input.details ?? [])].map((s) => s?.trim()).filter(Boolean) as string[];
   const lineSlots = Object.values(map).filter((m) => m.slot?.startsWith("line")).length;
   const lines = lineSlots ? splitLines(headline, lineSlots) : [];
 
@@ -127,6 +150,7 @@ export function composeDesign(input: ComposeInput, ratio: Ratio): { design: Reco
     headline,
     accent,
     kicker: input.kicker?.trim(),
+    subhead: hasSubhead ? input.subhead?.trim() : undefined,
     details: details.length ? details.join("  ·  ") : undefined,
     details2: input.details2?.trim(),
     line1: lines[0],
@@ -146,10 +170,18 @@ export function composeDesign(input: ComposeInput, ratio: Ratio): { design: Reco
   const layers: Record<string, unknown>[] = [];
   for (const l of scaleTreatment(t, ratio)) {
     const m = map[String(l.id)] ?? {};
+    if (m.needs && !text[m.needs]) {
+      shiftBelow.push({ y: Number(l.y), by: Number(l.h) });
+      continue;
+    }
     const out: Record<string, unknown> = { ...l };
     if (m.slot) {
       let v = text[m.slot];
-      if (!v) continue; // nothing to say here: drop the layer rather than leave sample text
+      if (!v) {
+        // Nothing to say here: drop the layer rather than leave sample text, and close its gap.
+        shiftBelow.push({ y: Number(l.y), by: Number(l.h) });
+        continue;
+      }
       if (m.slot === "headline" && String(l.text).includes("\n")) v = splitLines(v, 2).join("\n");
       // Giant type: one word can bleed off the edges, several words stack so each stays readable.
       if (t.id === "giant" && m.slot === "headline" && v.includes(" ")) {
@@ -172,6 +204,11 @@ export function composeDesign(input: ComposeInput, ratio: Ratio): { design: Reco
       if (findFont(String(out.font)).category === "script" && v === v.toUpperCase()) v = titleCase(v);
       out.text = v;
       used.add(m.slot);
+      // Fact lines are broken deliberately: shrink a long line to fit rather than wrap and leave an orphan.
+      if (m.slot === "details" || m.slot === "details2" || m.slot === "subhead") {
+        out.wrap = false;
+        out.sizing = "fit";
+      }
       // A one-line "fill" title is limited by its width, so a box sized for two lines leaves a gap below.
       // Estimate the cap height from the width (about half an em per character) and close the gap.
       if (out.sizing === "fill" && out.wrap === false && !v.includes("\n") && !out.rotate) {
@@ -184,7 +221,7 @@ export function composeDesign(input: ComposeInput, ratio: Ratio): { design: Reco
         }
       }
       // A subhead joins the details: give that block room for a second line.
-      if (m.slot === "details" && !out.bg && input.subhead && details.length > 1) {
+      if (m.slot === "details" && !out.bg && !hasSubhead && input.subhead && details.length > 1) {
         out.text = [details[0], details.slice(1).join("  ·  ")].join("\n");
         out.h = Math.round(Number(out.h) * 2.2);
       }
@@ -228,10 +265,13 @@ export function composeDesign(input: ComposeInput, ratio: Ratio): { design: Reco
     const bottomNow = Math.max(...layers.map((l) => Number(l.y) + Number(l.h)));
     const size = Math.round(H * 0.026);
     const h = Math.round(size * 1.35 * Math.min(3, Math.ceil(missing.join("  ·  ").length / 40)) + size * 0.5);
+    // Match the treatment's own details block, so a flush-left layout keeps its axis.
+    const like = layers.find((l) => l.id === "details" && l.type === "text");
     layers.push({
-      id: "info", type: "text", text: missing.join("  ·  "), font: "Space Grotesk", weight: 600, size, tracking: 0.1, case: "upper",
-      lineHeight: 1.35, align: "center", color: infoColour(lightPreview),
-      x: margin, y: Math.min(H - margin - h, bottomNow + Math.round(size * 1.2)), w: W - 2 * margin, h,
+      id: "info", type: "text", text: missing.join("  ·  "), font: like?.font ?? "Space Grotesk", weight: 600, size, tracking: 0.1, case: "upper",
+      lineHeight: 1.35, align: like?.align ?? "center", color: like?.color ?? infoColour(lightPreview),
+      x: like ? like.x : margin, y: Math.min(H - margin - h, bottomNow + Math.round(size * 1.2)), w: like ? like.w : W - 2 * margin, h,
+      ...(like?.rotate ? { rotate: like.rotate } : {}),
     });
   }
 

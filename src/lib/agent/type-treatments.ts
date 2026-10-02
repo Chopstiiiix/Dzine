@@ -214,17 +214,178 @@ export const TREATMENTS: Treatment[] = [
       { id: "age", type: "text", x: 420, y: 860, w: 240, h: 200, text: "5", font: "Titan One", sizing: "fill", wrap: false, align: "center", color: "#2fbf71", stroke: { width: 10, color: "#ffffff" } },
     ],
   },
+  {
+    id: "brush-hero",
+    name: "Brush script hero",
+    moods: ["hiphop", "rap", "mixtape", "street", "sports", "skate", "basketball", "youth", "summer", "drill", "trap", "urban"],
+    use: "A big hand-painted marker title, tilted, with a painted brush swoosh under it. Raw, energetic, made-by-hand.",
+    preview: "linear-gradient(160deg,#141414,#2a2a2a)",
+    layers: [
+      {
+        id: "swoosh", type: "svg", x: 120, y: 740, w: 840, h: 90,
+        svg: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 40' preserveAspectRatio='none'><path d='M5 28 C 90 8, 250 6, 395 16 L 392 25 C 250 18, 100 22, 8 37 Z' fill='#ff3d00'/></svg>",
+      },
+      { id: "title", type: "text", x: 60, y: 450, w: 960, h: 300, text: "Headline", font: "Permanent Marker", sizing: "fill", wrap: false, align: "center", color: "#ffffff", rotate: -6, shadow: "6px 6px 0px rgba(0,0,0,0.35)" },
+      { id: "details", type: "text", x: 140, y: 870, w: 800, h: 50, text: "SAT 14 NOV  ·  10PM", font: "Barlow Condensed", weight: 600, size: 36, tracking: 0.15, align: "center", color: "#ffffff" },
+    ],
+  },
+  {
+    id: "masthead",
+    name: "Magazine masthead",
+    moods: ["fashion", "editorial", "magazine", "album", "cover", "beauty", "lifestyle", "interview", "feature", "model", "luxury"],
+    use: "A huge high-contrast serif masthead across the top, an issue line under a rule, and italic cover lines anchored bottom left. Reads as a magazine cover.",
+    preview: "#e9e4da",
+    layers: [
+      { id: "masthead", type: "text", x: 40, y: 40, w: 1000, h: 250, text: "HEADLINE", font: "Playfair Display", weight: 900, sizing: "fill", wrap: false, align: "center", color: "#111111", tracking: -0.03 },
+      { id: "rule", type: "shape", shape: "rect", x: 40, y: 300, w: 1000, h: 3, fill: "#111111" },
+      { id: "kicker", type: "text", x: 40, y: 316, w: 1000, h: 34, text: "THE NIGHTLIFE ISSUE · NOVEMBER", font: "Inter", weight: 600, size: 22, tracking: 0.25, align: "center", color: "#111111" },
+      { id: "coverline", type: "text", x: 40, y: 900, w: 560, h: 160, text: "The new sound\nof the city", font: "Playfair Display", weight: 700, italic: true, size: 56, lineHeight: 1.05, color: "#111111" },
+      { id: "details", type: "text", x: 40, y: 1080, w: 640, h: 90, text: "Inside: the DJs, the venues, the night", font: "Inter", weight: 600, size: 26, lineHeight: 1.3, color: "#111111" },
+    ],
+  },
+  {
+    id: "label-stack",
+    name: "Label stack",
+    moods: ["streetwear", "fashion", "drop", "launch", "street", "urban", "brand", "sale", "pop-up", "market", "hiphop", "collection"],
+    use: "Each word of the title printed on its own solid label, staggered left and right like stickers or printed tape. Bold, graphic, streetwear.",
+    preview: "linear-gradient(180deg,#ffd400,#ffb000)",
+    layers: [
+      { id: "line1", type: "text", x: 80, y: 420, w: 700, h: 130, text: "WORD", font: "Anton", sizing: "fill", wrap: false, color: "#111111", bg: { color: "#ffffff", padX: 24, padY: 4 } },
+      { id: "line2", type: "text", x: 200, y: 560, w: 780, h: 130, text: "WORD", font: "Anton", sizing: "fill", wrap: false, align: "right", color: "#ffffff", bg: { color: "#ff2d55", padX: 24, padY: 4 } },
+      { id: "line3", type: "text", x: 80, y: 700, w: 640, h: 130, text: "WORD", font: "Anton", sizing: "fill", wrap: false, color: "#111111", bg: { color: "#ffffff", padX: 24, padY: 4 } },
+      { id: "details", type: "text", x: 80, y: 870, w: 900, h: 50, text: "DROP 01  ·  FRIDAY 6PM", font: "Space Grotesk", weight: 700, size: 32, tracking: 0.12, color: "#111111" },
+    ],
+  },
+  {
+    id: "vertical",
+    name: "Vertical title",
+    moods: ["fashion", "album", "minimal", "exhibition", "art", "architecture", "film", "editorial", "gallery", "photography", "portfolio"],
+    use: "The title runs up the left edge, rotated 90 degrees and as tall as the page; the information sits in a quiet column on the right. Architectural and confident.",
+    preview: "#ece8df",
+    layers: [
+      { id: "title", type: "text", x: -440, y: 545, w: 1220, h: 260, text: "HEADLINE", font: "Bebas Neue", sizing: "fill", wrap: false, align: "center", color: "#111111", rotate: -90 },
+      { id: "kicker", type: "text", x: 360, y: 80, w: 650, h: 36, text: "AN EXHIBITION", font: "Inter", weight: 600, size: 24, tracking: 0.3, color: "#111111" },
+      { id: "rule", type: "shape", shape: "rect", x: 360, y: 1110, w: 650, h: 3, fill: "#111111" },
+      { id: "details", type: "text", x: 360, y: 1130, w: 650, h: 120, text: "14 Nov — 20 Dec\nThe Gallery, Lagos", font: "Inter", weight: 500, size: 30, lineHeight: 1.3, color: "#111111" },
+    ],
+  },
+  {
+    id: "y2k",
+    name: "Y2K gradient glow",
+    moods: ["y2k", "tech", "launch", "party", "futuristic", "pop", "rnb", "2000s", "digital", "app", "rave", "electronic"],
+    use: "A wide heavy display title filled with an iridescent cyan-violet-pink gradient, floating over a blurred colour blob. Glossy, digital, Y2K.",
+    preview: "#0b0820",
+    layers: [
+      { id: "blob", type: "shape", shape: "ellipse", x: 140, y: 380, w: 800, h: 560, fill: "radial-gradient(circle,rgba(255,79,216,0.55),rgba(123,92,255,0.25) 45%,rgba(0,0,0,0) 70%)", blur: 40 },
+      { id: "kicker", type: "text", x: 140, y: 470, w: 800, h: 36, text: "LIVE IN CONCERT", font: "Unbounded", weight: 400, size: 24, tracking: 0.3, align: "center", color: "#e8e6ff" },
+      { id: "title", type: "text", x: 60, y: 520, w: 960, h: 260, text: "HEADLINE", font: "Unbounded", weight: 900, sizing: "fill", wrap: false, align: "center", gradient: "linear-gradient(90deg,#00f0ff,#7b5cff 45%,#ff4fd8)", shadow: "0 10px 30px rgba(123,92,255,0.6)" },
+      { id: "details", type: "text", x: 140, y: 820, w: 800, h: 50, text: "SAT 14 NOV  ·  10PM", font: "Space Grotesk", weight: 600, size: 30, tracking: 0.12, align: "center", color: "#ffffff" },
+    ],
+  },
+  {
+    id: "arcade",
+    name: "Arcade pixel",
+    moods: ["gaming", "esports", "tournament", "retro", "8bit", "pixel", "game", "arcade", "tech", "hackathon", "lan"],
+    use: "Pixel-font title in electric yellow with a hard magenta offset shadow, inside a neon frame, 'PLAYER 1' style kicker. Gaming and retro tech.",
+    preview: "#120a2a",
+    layers: [
+      { id: "frame", type: "shape", shape: "rect", x: 60, y: 360, w: 960, h: 580, fill: "transparent", border: { width: 6, color: "#29f0ff" } },
+      { id: "kicker", type: "text", x: 140, y: 400, w: 800, h: 34, text: "PLAYER 1 READY", font: "Press Start 2P", size: 22, align: "center", color: "#29f0ff" },
+      { id: "title", type: "text", x: 100, y: 470, w: 880, h: 280, text: "HEAD\nLINE", font: "Press Start 2P", sizing: "fill", wrap: false, lineHeight: 1.25, align: "center", color: "#ffe600", shadow: "6px 6px 0 #ff2e88" },
+      { id: "details", type: "text", x: 120, y: 790, w: 840, h: 100, text: "SAT 14 NOV · 10PM", font: "Press Start 2P", size: 20, lineHeight: 1.7, align: "center", color: "#ffffff" },
+    ],
+  },
+  {
+    id: "western",
+    name: "Western poster",
+    moods: ["country", "western", "rodeo", "cowboy", "barn", "bbq", "saloon", "ranch", "rustic", "hoedown", "line dancing"],
+    use: "Old wood-type wanted-poster look: ornate Tuscan title between heavy rules, slab-serif details, warm paper and rust ink.",
+    preview: "#e9d3a6",
+    layers: [
+      { id: "kicker", type: "text", x: 140, y: 330, w: 800, h: 44, text: "SATURDAY NIGHT", font: "Rye", size: 30, tracking: 0.08, align: "center", color: "#3b2412" },
+      { id: "rule1", type: "shape", shape: "rect", x: 140, y: 390, w: 800, h: 5, fill: "#3b2412" },
+      { id: "title", type: "text", x: 80, y: 420, w: 920, h: 300, text: "HEAD\nLINE", font: "Rye", sizing: "fill", wrap: false, lineHeight: 0.95, align: "center", color: "#8a2c0d" },
+      { id: "rule2", type: "shape", shape: "rect", x: 140, y: 740, w: 800, h: 5, fill: "#3b2412" },
+      { id: "details", type: "text", x: 140, y: 770, w: 800, h: 50, text: "BBQ · LIVE BAND · DANCING", font: "Alfa Slab One", size: 32, tracking: 0.08, align: "center", color: "#3b2412" },
+    ],
+  },
+  {
+    id: "graffiti",
+    name: "Graffiti tag",
+    moods: ["graffiti", "street", "hiphop", "urban", "skate", "rap", "mixtape", "drill", "underground", "youth", "block party"],
+    use: "A spray-paint tag title in acid green with a thick black outline and a hot pink offset shadow, details in marker. Street, block party, skate.",
+    preview: "linear-gradient(180deg,#5b5b5b,#2c2c2c)",
+    layers: [
+      { id: "title", type: "text", x: 60, y: 460, w: 960, h: 320, text: "Headline", font: "Sedgwick Ave Display", sizing: "fill", wrap: false, align: "center", color: "#39ff14", stroke: { width: 6, color: "#000000" }, shadow: "8px 8px 0 #ff00a8", rotate: -5 },
+      { id: "details", type: "text", x: 140, y: 830, w: 800, h: 60, text: "Block party · Sat 14 Nov", font: "Permanent Marker", size: 38, align: "center", color: "#ffffff", rotate: -2 },
+    ],
+  },
+  {
+    id: "minimal",
+    name: "Minimal lowercase",
+    moods: ["tech", "startup", "brand", "launch", "app", "product", "minimal", "clean", "modern", "agency", "portfolio", "podcast"],
+    use: "Modern restraint: a tight lowercase sans title flush left, a single accent dot, small details underneath, generous white space.",
+    preview: "#f5f4f0",
+    layers: [
+      { id: "kicker", type: "text", x: 80, y: 520, w: 600, h: 30, text: "(new)", font: "Inter", weight: 500, size: 22, tracking: 0.05, color: "#8a8a85" },
+      { id: "title", type: "text", x: 80, y: 560, w: 720, h: 200, text: "headline", font: "Inter Tight", weight: 600, sizing: "fill", wrap: false, case: "lower", tracking: -0.04, color: "#111111" },
+      { id: "dot", type: "shape", shape: "ellipse", x: 870, y: 610, w: 110, h: 110, fill: "#ff3d00" },
+      { id: "details", type: "text", x: 80, y: 800, w: 800, h: 80, text: "Launching 14 November\nlagos.studio", font: "Inter", weight: 500, size: 26, lineHeight: 1.3, color: "#111111" },
+    ],
+  },
+  {
+    id: "sale-burst",
+    name: "Sale burst",
+    moods: ["sale", "promo", "discount", "offer", "black friday", "deal", "shop", "store", "market", "clearance", "giveaway"],
+    use: "A yellow starburst sticker carrying the big number or percentage, with the heavy caps title and details below. Retail, promos, giveaways.",
+    preview: "#e11d48",
+    layers: [
+      {
+        id: "burst", type: "svg", x: 290, y: 300, w: 500, h: 500,
+        svg: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><polygon fill='#ffd400' points='100.0,2.0 115.6,21.5 137.5,9.5 144.4,33.5 169.3,30.7 166.5,55.6 190.5,62.5 178.5,84.4 198.0,100.0 178.5,115.6 190.5,137.5 166.5,144.4 169.3,169.3 144.4,166.5 137.5,190.5 115.6,178.5 100.0,198.0 84.4,178.5 62.5,190.5 55.6,166.5 30.7,169.3 33.5,144.4 9.5,137.5 21.5,115.6 2.0,100.0 21.5,84.4 9.5,62.5 33.5,55.6 30.7,30.7 55.6,33.5 62.5,9.5 84.4,21.5'/></svg>",
+      },
+      { id: "accent", type: "text", x: 350, y: 460, w: 380, h: 180, text: "50%", font: "Archivo Black", sizing: "fill", wrap: false, align: "center", color: "#111111", rotate: -8 },
+      { id: "title", type: "text", x: 60, y: 840, w: 960, h: 200, text: "HEADLINE", font: "Anton", sizing: "fill", wrap: false, align: "center", color: "#ffffff" },
+      { id: "details", type: "text", x: 140, y: 1070, w: 800, h: 44, text: "THIS WEEKEND ONLY", font: "Space Grotesk", weight: 700, size: 30, tracking: 0.12, align: "center", color: "#ffffff" },
+    ],
+  },
+  {
+    id: "horror",
+    name: "Horror drip",
+    moods: ["horror", "halloween", "scary", "thriller", "haunted", "zombie", "spooky", "fright", "costume", "monster"],
+    use: "Dripping blood-red horror lettering with a dark red glow, framed by elegant Roman caps for kicker and details. Halloween, horror nights.",
+    preview: "radial-gradient(circle at 50% 40%,#2b0a0a,#050505 70%)",
+    layers: [
+      { id: "kicker", type: "text", x: 140, y: 420, w: 800, h: 40, text: "ENTER IF YOU DARE", font: "Cinzel", weight: 700, size: 26, tracking: 0.3, align: "center", color: "#e5e5e5" },
+      { id: "title", type: "text", x: 60, y: 480, w: 960, h: 300, text: "HEAD\nLINE", font: "Creepster", sizing: "fill", wrap: false, lineHeight: 0.9, align: "center", color: "#c1121f", shadow: "0 0 24px rgba(193,18,31,0.6)" },
+      { id: "details", type: "text", x: 140, y: 820, w: 800, h: 50, text: "31 OCTOBER · MIDNIGHT", font: "Cinzel", weight: 700, size: 28, tracking: 0.2, align: "center", color: "#e5e5e5" },
+    ],
+  },
+  {
+    id: "lineup",
+    name: "Festival lineup",
+    moods: ["festival", "lineup", "concert", "music", "fest", "carnival", "tour", "artists", "stage", "showcase", "day party"],
+    use: "Poster hierarchy for many names: festival title on top, headliners large in a second line, the supporting acts and info smaller below.",
+    preview: "linear-gradient(180deg,#ff5f6d,#ffc371)",
+    layers: [
+      { id: "kicker", type: "text", x: 80, y: 250, w: 920, h: 40, text: "THREE DAYS · TWO STAGES", font: "Space Grotesk", weight: 700, size: 26, tracking: 0.3, align: "center", color: "#3a0d18" },
+      { id: "title", type: "text", x: 60, y: 300, w: 960, h: 260, text: "HEADLINE", font: "Anton", sizing: "fill", wrap: false, align: "center", color: "#ffffff" },
+      { id: "subhead", type: "text", x: 80, y: 600, w: 920, h: 180, text: "HEADLINER  ·  HEADLINER", font: "Barlow Condensed", weight: 800, size: 74, lineHeight: 1.05, align: "center", color: "#3a0d18" },
+      { id: "details", type: "text", x: 80, y: 820, w: 920, h: 120, text: "Artist · Artist · Artist · Artist · Artist", font: "Barlow Condensed", weight: 600, size: 36, tracking: 0.08, lineHeight: 1.3, align: "center", color: "#3a0d18" },
+    ],
+  },
 ];
 
 const words = (s: string) => s.toLowerCase().match(/[a-z0-9]+/g) ?? [];
 
 /** The treatments that best match a brief. Falls back to versatile ones when nothing matches. */
-export function pickTreatments(brief: string, n = 3): Treatment[] {
+export function pickTreatments(brief: string, n = 3, forced?: string): Treatment[] {
   const q = new Set(words(brief.replace(/hip[\s-]?hop/gi, "hiphop")));
   const scored = TREATMENTS.map((t) => ({ t, s: t.moods.filter((m) => words(m).every((w) => q.has(w))).length }));
   const hits = scored.filter((x) => x.s > 0).sort((a, b) => b.s - a.s).map((x) => x.t);
   const fallback = ["script-over-caps", "stagger", "swiss"].map((id) => TREATMENTS.find((t) => t.id === id)!);
-  return [...new Set([...hits, ...fallback])].slice(0, n);
+  const first = TREATMENTS.filter((t) => t.id === forced);
+  return [...new Set([...first, ...hits, ...fallback])].slice(0, n);
 }
 
 const SCALED = new Set(["x", "w"]);
@@ -248,8 +409,8 @@ export function scaleTreatment(t: Treatment, ratio: Ratio): Record<string, unkno
   });
 }
 
-export function treatmentBlock(brief: string, ratio: Ratio): string {
-  const picks = pickTreatments(brief);
+export function treatmentBlock(brief: string, ratio: Ratio, forced?: string): string {
+  const picks = pickTreatments(brief, 3, forced);
   return [
     "<type_treatments>",
     "Typographic treatments that suit this brief, as real layers already scaled to this canvas. Build your typography from one of " +
@@ -261,8 +422,8 @@ export function treatmentBlock(brief: string, ratio: Ratio): string {
 }
 
 /** Template mode: every treatment by id, best matches for the brief first. */
-export function treatmentMenu(brief: string): string {
-  const best = pickTreatments(brief).map((t) => t.id);
+export function treatmentMenu(brief: string, forced?: string): string {
+  const best = pickTreatments(brief, 3, forced).map((t) => t.id);
   const order = [...best, ...TREATMENTS.map((t) => t.id).filter((id) => !best.includes(id))];
   return [
     "<type_treatments>",
