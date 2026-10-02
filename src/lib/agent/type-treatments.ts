@@ -420,8 +420,8 @@ export const TREATMENTS: Treatment[] = [
     use: "Restaurant menu: a script word over a bold title, a dark panel listing dishes with their prices aligned right, contact at the bottom. Pass dishes as items, e.g. 'Jollof Rice — ₦3,500'.",
     preview: "linear-gradient(180deg,#1b1b1b,#0e0e0e)",
     layers: [
-      { id: "accent", type: "text", x: 140, y: 70, w: 800, h: 120, text: "Today's", font: "Pacifico", sizing: "fill", wrap: false, align: "center", color: "#ffb703", rotate: -4 },
-      { id: "title", type: "text", x: 60, y: 160, w: 960, h: 200, text: "MENU", font: "Anton", sizing: "fill", wrap: false, align: "center", color: "#ffffff" },
+      { id: "title", type: "text", x: 60, y: 170, w: 960, h: 200, text: "MENU", font: "Anton", sizing: "fill", wrap: false, align: "center", color: "#ffffff" },
+      { id: "accent", type: "text", x: 140, y: 60, w: 800, h: 120, text: "Today's", font: "Pacifico", sizing: "fill", wrap: false, align: "center", color: "#ffb703", rotate: -4, shadow: "3px 4px 0px rgba(0,0,0,0.45)" },
       { id: "panel", type: "shape", shape: "rect", x: 90, y: 400, w: 900, h: 640, fill: "rgba(0,0,0,0.62)", radius: 24, border: { width: 2, color: "#ffb703" } },
       { id: "names", type: "text", x: 140, y: 450, w: 560, h: 540, text: "Dish\nDish", font: "Space Grotesk", weight: 600, size: 40, lineHeight: 1.9, color: "#ffffff" },
       { id: "prices", type: "text", x: 700, y: 450, w: 240, h: 540, text: "$10\n$10", font: "Space Grotesk", weight: 700, size: 40, lineHeight: 1.9, align: "right", color: "#ffb703" },

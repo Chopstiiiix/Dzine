@@ -26,5 +26,6 @@ export async function GET(req: Request) {
       new Set(),
     ).design,
   }));
-  return Response.json({ styles }, { headers: { "cache-control": "public, max-age=3600" } });
+  // Revalidated every time: the style list changes whenever the playbook does.
+  return Response.json({ styles }, { headers: { "cache-control": "no-cache" } });
 }

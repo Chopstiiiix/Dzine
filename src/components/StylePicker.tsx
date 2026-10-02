@@ -20,7 +20,7 @@ export function StylePicker({ ratio, value, onChange, disabled }: { ratio: strin
   useEffect(() => {
     if (!open || styles?.ratio === ratio) return;
     let alive = true;
-    fetch(`/api/styles?ratio=${encodeURIComponent(ratio)}`)
+    fetch(`/api/styles?ratio=${encodeURIComponent(ratio)}`, { cache: "no-cache" })
       .then((r) => r.json())
       .then((b) => alive && setStyles({ ratio, list: b.styles }))
       .catch(() => {});
