@@ -1,6 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { BLENDS, MASKS } from "@/lib/design/types";
 import { IMAGE_ASPECTS } from "@/lib/ratios";
+import { TREATMENTS } from "./type-treatments";
 
 const border = {
   type: "object",
@@ -172,12 +173,44 @@ export const TOOLS: Anthropic.Tool[] = [
   },
 ];
 
-export const DESIGN_TOOLS = new Set(["render_design", "patch_design"]);
+/** Template mode's one design tool: the designer chooses, code composes. */
+export const COMPOSE_TOOL: Anthropic.Tool = {
+  name: "compose_design",
+  description:
+    "Put a complete design on the canvas from a typography treatment. You choose the treatment, the words, the colours and where the type sits; the layout engine places every box precisely. Call it again with changes to revise.",
+  input_schema: {
+    type: "object",
+    properties: {
+      title: { type: "string", description: "Short project title, e.g. 'Midnight Lagos flyer'." },
+      treatment: { type: "string", enum: TREATMENTS.map((t) => t.id), description: "Typography treatment id from <type_treatments>." },
+      position: { type: "string", enum: ["top", "middle", "bottom"], description: "Where the type block sits. Put it over the calmest, emptiest part of the background." },
+      background_asset_id: { type: "string", description: "Full-bleed background image asset id." },
+      subject_asset_id: { type: "string", description: "Optional cutout (transparent) to place in front of the background." },
+      logo_asset_id: { type: "string", description: "Optional logo asset id, placed small in a corner." },
+      headline: { type: "string", description: "The main title, exactly as the user wrote it. Line breaks are handled for you." },
+      accent: { type: "string", description: "Optional contrasting word or phrase: the script word in a lockup, 'Night of' over 'WORSHIP', or a big number such as '14.11'." },
+      kicker: { type: "string", description: "Optional small line above the title, e.g. 'CLUB EKO PRESENTS'." },
+      subhead: { type: "string", description: "Optional supporting line, e.g. the line-up: 'DJs Tobi Beats + Ama K'." },
+      details: { type: "array", items: { type: "string" }, description: "Event facts, each short: date, time, venue, price. Every fact the user gave must appear here or elsewhere." },
+      details2: { type: "string", description: "Optional second info line for treatments with two info rows (luxury, swiss)." },
+      colors: {
+        type: "object",
+        properties: { headline: { type: "string" }, accent: { type: "string" }, text: { type: "string" } },
+        description: "Hex colours taken from the background image: headline, accent and small text.",
+      },
+      headline_font: { type: "string", description: "Optional font family from search_fonts to replace the treatment's headline font." },
+    },
+    required: ["treatment", "position", "headline"],
+  },
+};
+
+export const DESIGN_TOOLS = new Set(["render_design", "patch_design", "compose_design"]);
 
 export const TOOL_STATUS: Record<string, string> = {
   generate_image: "Creating imagery",
   remove_background: "Cutting out the subject",
   search_fonts: "Choosing type",
+  compose_design: "Setting the type",
   render_design: "Composing the layout",
   patch_design: "Updating the design",
 };

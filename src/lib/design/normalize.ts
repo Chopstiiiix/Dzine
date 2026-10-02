@@ -89,7 +89,8 @@ function clean<T extends object>(o: T): T {
 function keepTextOnCanvas<T extends { x: number; y: number; w: number; h: number; rotate?: number }>(
   box: T, W: number, H: number, id: string, warnings: string[],
 ): T {
-  if (box.rotate) return box;
+  // Rotated text and boxes bigger than the canvas (giant cropped type) bleed on purpose.
+  if (box.rotate || box.w > W || box.h > H) return box;
   const fix = (pos: number, size: number, max: number) => {
     if (pos >= 0 && pos + size <= max) return pos;
     if (pos - size / 2 >= 0 && pos + size / 2 <= max) return pos - size / 2;

@@ -4,6 +4,8 @@ import { findLinks, imageFromLink } from "@/lib/agent/links";
 import { normalizeLayer } from "@/lib/design/normalize";
 import { findFont, searchFonts } from "@/lib/fonts";
 import { getRatio } from "@/lib/ratios";
+import { TREATMENTS, pickTreatments } from "@/lib/agent/type-treatments";
+import { composeDesign, splitLines } from "@/lib/design/compose";
 
 const r = getRatio("ig-portrait"); // 1080 x 1350
 const text = (x: number, y: number, w: number, h: number, extra = {}) => {
@@ -25,5 +27,29 @@ assert.ok(searchFonts("graffiti").length > 3); // designer vocabulary maps onto 
 assert.ok(searchFonts("luxury", "serif").every((f) => f.category === "serif"));
 assert.equal(findFont("clash display").source, "fontshare"); // library fonts resolve, case-insensitive
 assert.equal(findFont("Not A Font").family, "Inter"); // unknown falls back
+
+assert.deepEqual(text(-120, 300, 1320, 620).at, [-120, 300]); // giant cropped type bleeds on purpose
+for (const t of TREATMENTS) for (const l of t.layers) {
+  if (typeof l.font === "string") assert.equal(findFont(l.font).family, l.font, `${t.id}: font ${l.font} not in library`);
+}
+assert.equal(pickTreatments("church gospel worship night")[0].id, "gospel");
+assert.equal(pickTreatments("a hip hop mixtape cover").length, 3);
+
+assert.deepEqual(splitLines("MIDNIGHT LAGOS", 2), ["MIDNIGHT", "LAGOS"]);
+assert.deepEqual(splitLines("A NIGHT OF WORSHIP AND PRAISE", 3).length, 3);
+// Template mode: every fact reaches the canvas, in every treatment and position, and nothing leaves it.
+for (const t of TREATMENTS) for (const position of ["top", "middle", "bottom"] as const) {
+  const { design } = composeDesign(
+    { treatment: t.id, position, headline: "MIDNIGHT LAGOS", kicker: "CLUB EKO PRESENTS", subhead: "DJs Tobi Beats + Ama K", details: ["SAT 14 NOV", "10PM TILL LATE"] },
+    r,
+  );
+  const all = JSON.stringify(design.layers).toUpperCase();
+  for (const fact of ["MIDNIGHT", "LAGOS", "TOBI BEATS", "SAT 14 NOV", "10PM TILL LATE", "CLUB EKO"]) {
+    assert.ok(all.includes(fact), `${t.id}/${position}: "${fact}" missing`);
+  }
+  for (const l of design.layers as { id: string; type: string; y: number; h: number; w: number }[]) {
+    if (l.type === "text" && l.w <= r.w) assert.ok(l.y >= 0 && l.y + l.h <= r.h + 1, `${t.id}/${position}: ${l.id} off canvas`);
+  }
+}
 
 console.log("checks passed");

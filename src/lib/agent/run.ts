@@ -7,10 +7,12 @@ import { IMAGE_ASPECTS, type Ratio } from "@/lib/ratios";
 import type { ChatMessage, Pending, Project, Store } from "@/lib/store/types";
 import { describeFont, searchFonts } from "@/lib/fonts";
 import { referenceBlock } from "./examples";
+import { treatmentBlock, treatmentMenu } from "./type-treatments";
 import { generateImage, removeBackground } from "./images";
 import { findLinks, imageFromLink } from "./links";
-import { SYSTEM_PROMPT, contextBlock } from "./prompt";
-import { DESIGN_TOOLS, TOOLS, TOOL_STATUS } from "./tools";
+import { SYSTEM_PROMPT, TEMPLATE_MODE_PROMPT, contextBlock } from "./prompt";
+import { COMPOSE_TOOL, DESIGN_TOOLS, TOOLS, TOOL_STATUS } from "./tools";
+import { type ComposeInput, composeDesign } from "@/lib/design/compose";
 
 type MessageParam = Anthropic.MessageParam;
 type Block = Anthropic.ContentBlockParam;
@@ -155,7 +157,17 @@ export async function runAgent(run: AgentRun): Promise<void> {
   }
 
   // Layouts to learn from, picked once per turn from the user's own words.
-  const references = input.kind === "user" ? await referenceBlock(input.text, ratio) : "";
+  // Template mode lists every treatment by name (the engine places them); free mode shows the closest few
+  // as layers to adapt, plus the nearest professional layouts.
+  const references =
+    input.kind !== "user"
+      ? ""
+      : serverConfig.templateMode
+        ? treatmentMenu(input.text)
+        : [treatmentBlock(input.text, ratio), await referenceBlock(input.text, ratio)].filter(Boolean).join("\n\n");
+  const tools = serverConfig.templateMode
+    ? [...TOOLS.filter((t) => t.name === "generate_image" || t.name === "search_fonts"), COMPOSE_TOOL]
+    : TOOLS;
 
   const finish = (text: string) => text.replace(/\n{3,}/g, "\n\n").trim();
 
@@ -238,10 +250,18 @@ export async function runAgent(run: AgentRun): Promise<void> {
         return { result: ok(use.id, [{ type: "text", text: note }, await imageBlock(store, asset)]) };
       }
 
-      if (use.name === "render_design" || use.name === "patch_design") {
+      if (use.name === "render_design" || use.name === "patch_design" || use.name === "compose_design") {
         const ids = new Set(assetById.keys());
         let next: { design: Design; warnings: string[] };
-        if (use.name === "render_design") {
+        if (use.name === "compose_design") {
+          const composed = composeDesign(args as ComposeInput, ratio);
+          next = normalizeDesign(composed.design, ratio, ids);
+          next.warnings.unshift(...composed.notes);
+          if (typeof args.title === "string" && args.title.trim() && (title === "Untitled design" || !title)) {
+            title = args.title.trim().slice(0, 60);
+            emit({ type: "title", title });
+          }
+        } else if (use.name === "render_design") {
           next = normalizeDesign(args, ratio, ids);
           if (!next.design.layers.length) {
             return { result: fail(use.id, `No valid layers. ${next.warnings.join(" ")}`) };
@@ -280,13 +300,14 @@ export async function runAgent(run: AgentRun): Promise<void> {
       max_tokens: 24000,
       system: [
         { type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
+        ...(serverConfig.templateMode ? [{ type: "text" as const, text: TEMPLATE_MODE_PROMPT }] : []),
         {
           type: "text",
           text: contextBlock({ ratio, assets, design, imagesLeft: Math.max(0, serverConfig.maxImagesPerTurn - imagesUsed) }),
         },
         ...(references ? [{ type: "text" as const, text: references }] : []),
       ],
-      tools: TOOLS,
+      tools,
       messages: trimHistory(history),
       ...(serverConfig.thinking ? { thinking: { type: "adaptive" as const, display: "omitted" as const } } : {}),
     });

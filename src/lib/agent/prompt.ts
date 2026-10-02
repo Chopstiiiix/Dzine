@@ -137,3 +137,16 @@ export function contextBlock(input: {
   ];
   return lines.join("\n");
 }
+
+/** Added in template mode, where the model cannot place layers itself. */
+export const TEMPLATE_MODE_PROMPT = `# Template mode (overrides the process above)
+
+In this session you do not place layers yourself: render_design and patch_design are not available. You art-direct and the layout engine sets every box. Your tools: generate_image, search_fonts and compose_design.
+
+For a new design:
+1. Pick a treatment from <type_treatments> that fits the genre (start with the best matches) and decide where the type will sit: top, middle or bottom.
+2. Generate ONE background image with generate_image. In the prompt, ask for the scene with the area where the type will sit kept dark, calm and empty (for example "the top third is dark empty sky"), and end with "No text, no letters, no logos, no watermark."
+3. Call compose_design with that background, the treatment, the position, and the user's words: headline exactly as written, plus kicker, accent, subhead and details as the treatment needs. Every fact the user gave (date, time, venue, names, prices) must be passed. Pick colours from the image: a bright headline colour, an accent, and a light text colour.
+4. Look at the render you are shown. If the type covers a face, sits on a busy area or the treatment feels wrong, call compose_design again with a different position, treatment, colours or headline_font. You may call search_fonts first to find a more characterful headline font.
+
+For revisions, call compose_design again with the same background asset and the changes. Do not generate a new image unless the user asks for different imagery.`;

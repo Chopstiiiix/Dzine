@@ -10,6 +10,13 @@ export const serverConfig = {
   imageModel: process.env.DZINE_IMAGE_MODEL || "fal-ai/nano-banana-pro",
   /** 1K, 2K or 4K. 2K keeps backgrounds sharp at print-size exports. */
   imageResolution: process.env.DZINE_IMAGE_RESOLUTION || "2K",
+  /**
+   * Template mode: the designer picks a typography treatment and supplies words and colours, and code
+   * places every box. For local models that cannot write reliable layout coordinates.
+   */
+  get templateMode() {
+    return process.env.DZINE_TEMPLATE_MODE === "1";
+  },
   /** Generate images on this machine with mflux instead of fal.ai. Apple Silicon only, never on Vercel. */
   localImages: process.env.DZINE_LOCAL_IMAGES === "1" && process.env.DZINE_MOCK !== "1",
   /** Folder holding the mflux-generate-* commands (`uv tool install mflux` puts them here). */
