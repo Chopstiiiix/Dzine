@@ -1,5 +1,9 @@
-// Curated Google Fonts the agent may use. A closed list keeps every font loadable
-// and every export reproducible.
+import LIBRARY from "./fonts-library.json";
+
+// Fonts the agent may use. A curated go-to list sits in the system prompt; the full library
+// (every Google Fonts family plus Fontshare, all free for commercial use, built by
+// scripts/import_fonts.py) is reachable through the search_fonts tool. A closed set keeps
+// every font loadable and every export reproducible. Server only: the library is ~240 KB.
 
 export type FontCategory = "display" | "serif" | "sans" | "script" | "mono-tech";
 
@@ -10,7 +14,13 @@ export type FontDef = {
   /** Weights that also have a true italic. */
   italics?: number[];
   note?: string;
+  /** Where the files come from. Google Fonts unless set. */
+  source?: "google" | "fontshare";
+  slug?: string;
 };
+
+type LibraryEntry = { f: string; s: "g" | "fs"; slug?: string; c: FontCategory; w: number[]; i?: number[]; t: string[]; p: number };
+
 
 const W39 = [300, 400, 500, 600, 700, 800, 900];
 const W38 = [300, 400, 500, 600, 700, 800];
@@ -101,10 +111,73 @@ export const FONTS: FontDef[] = [
 
 export const DEFAULT_FONT = "Inter";
 
-const byName = new Map(FONTS.map((f) => [f.family.toLowerCase(), f]));
+const library: (FontDef & { tags: string[]; rank: number })[] = (LIBRARY as LibraryEntry[]).map((e) => ({
+  family: e.f,
+  category: e.c,
+  weights: e.w,
+  italics: e.i,
+  note: e.t.join(", "),
+  source: e.s === "fs" ? "fontshare" : "google",
+  slug: e.slug,
+  tags: e.t,
+  rank: e.p,
+}));
+
+const byName = new Map<string, FontDef>([...library, ...FONTS].map((f) => [f.family.toLowerCase(), f]));
+
+/** The font with this exact family name, or null. */
+export function lookupFont(name: string | undefined | null): FontDef | null {
+  return byName.get(String(name ?? "").trim().toLowerCase()) ?? null;
+}
 
 export function findFont(name: string | undefined | null): FontDef {
-  return byName.get(String(name ?? "").trim().toLowerCase()) ?? byName.get(DEFAULT_FONT.toLowerCase())!;
+  return lookupFont(name) ?? byName.get(DEFAULT_FONT.toLowerCase())!;
+}
+
+// Designer vocabulary -> the library's style tags (Google's tag set plus Fontshare's use tags).
+const SYNONYMS: Record<string, string[]> = {
+  graffiti: ["distressed", "rugged", "brush", "wacky", "loud"], street: ["rugged", "distressed", "brush", "loud"],
+  grunge: ["distressed", "rugged"], urban: ["rugged", "loud", "stencil"], hiphop: ["loud", "rugged", "stencil", "distressed"],
+  retro: ["vintage", "woodtype"], "70s": ["vintage", "blobby", "playful"], "80s": ["futuristic", "techno", "vintage"],
+  groovy: ["blobby", "vintage", "playful"], vintage: ["vintage", "woodtype"], western: ["tuscan", "woodtype", "clarendon"],
+  luxury: ["sophisticated", "fancy", "didone"], elegant: ["sophisticated", "formal", "fancy"], wedding: ["formal", "fancy", "sophisticated"],
+  fashion: ["didone", "sophisticated", "fancy"], editorial: ["editorial", "magazines", "transitional"],
+  futuristic: ["futuristic", "techno", "innovative"], tech: ["techno", "futuristic"], gaming: ["pixel", "techno", "futuristic"],
+  neon: ["inline", "futuristic", "excited"], club: ["loud", "excited", "futuristic"], party: ["excited", "playful", "happy", "loud"],
+  nightlife: ["loud", "excited", "futuristic"], afrobeats: ["loud", "excited", "playful", "active"], concert: ["loud", "excited"],
+  sports: ["loud", "active", "stencil"], bold: ["loud"], heavy: ["loud", "fat"], minimal: ["geometric", "calm"], clean: ["geometric", "calm", "competent"],
+  corporate: ["business", "competent"], kids: ["childlike", "cute", "happy"], cute: ["cute", "childlike"], fun: ["playful", "happy", "wacky"],
+  comic: ["playful", "wacky"], horror: ["distressed", "blackletter", "medieval"], gothic: ["blackletter", "medieval"], metal: ["blackletter", "rugged"],
+  handwritten: ["handwritten", "informal", "handwriting"], marker: ["brush", "informal", "handwritten"], calligraphy: ["formal", "script"],
+  church: ["sophisticated", "formal", "transitional"], gospel: ["sophisticated", "formal"], christmas: ["formal", "fancy", "happy"],
+  stencil: ["stencil"], army: ["stencil"], typewriter: ["monospace"], pixel: ["pixel"], deco: ["inline", "art deco"],
+};
+
+/** Families matching a style description, best first. Matches tags, names and category. */
+export function searchFonts(query: string, category?: string, limit = 12): FontDef[] {
+  const raw = query.toLowerCase().replace(/hip[\s-]?hop/g, "hiphop").match(/[a-z0-9]+/g) ?? [];
+  const words = [...new Set(raw.flatMap((w) => [w, ...(SYNONYMS[w] ?? [])]))];
+  return library
+    .filter((f) => !category || f.category === category)
+    .map((f) => {
+      const name = f.family.toLowerCase();
+      let s = 0;
+      for (const w of words) {
+        if (f.tags.some((t) => t.includes(w))) s += 3;
+        if (name.includes(w)) s += 5;
+        if (f.category.includes(w)) s += 1;
+      }
+      return { f, s: s - Math.log10(f.rank + 10) * 0.6 };
+    })
+    .filter((x) => x.s > 0 || !words.length)
+    .sort((a, b) => b.s - a.s)
+    .slice(0, limit)
+    .map((x) => x.f);
+}
+
+export function describeFont(f: FontDef): string {
+  const weights = f.weights.length === 1 ? String(f.weights[0]) : `${f.weights[0]}-${f.weights[f.weights.length - 1]}`;
+  return `${f.family} (${f.category}; ${weights}${f.italics?.length ? ", italic" : ""}; ${f.note ?? ""})`;
 }
 
 export function nearestWeight(font: FontDef, weight: number | undefined): number {
@@ -112,9 +185,12 @@ export function nearestWeight(font: FontDef, weight: number | undefined): number
   return font.weights.reduce((best, w) => (Math.abs(w - target) < Math.abs(best - target) ? w : best));
 }
 
-/** Google Fonts CSS URL for one family, with every weight in the catalogue. */
+/** Stylesheet URL for one family, with every weight in the catalogue. */
 export function fontCssUrl(family: string): string {
   const font = findFont(family);
+  if (font.source === "fontshare") {
+    return `https://api.fontshare.com/v2/css?f[]=${font.slug}@${font.weights.join(",")}&display=swap`;
+  }
   const name = font.family.replace(/ /g, "+");
   let spec = "";
   if (font.italics?.length) {

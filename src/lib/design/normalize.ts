@@ -82,6 +82,26 @@ function clean<T extends object>(o: T): T {
   return o;
 }
 
+/**
+ * Text that spills off the canvas is never intended. The usual cause is a model treating x/y as the
+ * box centre, so try that reading first, then clamp. Images and shapes may bleed on purpose.
+ */
+function keepTextOnCanvas<T extends { x: number; y: number; w: number; h: number; rotate?: number }>(
+  box: T, W: number, H: number, id: string, warnings: string[],
+): T {
+  if (box.rotate) return box;
+  const fix = (pos: number, size: number, max: number) => {
+    if (pos >= 0 && pos + size <= max) return pos;
+    if (pos - size / 2 >= 0 && pos + size / 2 <= max) return pos - size / 2;
+    return Math.min(Math.max(0, pos), Math.max(0, max - size));
+  };
+  const x = fix(box.x, box.w, W);
+  const y = fix(box.y, box.h, H);
+  if (x === box.x && y === box.y) return box;
+  warnings.push(`Layer "${id}" ran off the canvas, moved to ${Math.round(x)},${Math.round(y)}. x and y are the TOP-LEFT corner of the box, not its centre.`);
+  return { ...box, x, y };
+}
+
 export function normalizeLayer(
   raw: unknown,
   ratio: Ratio,
@@ -143,7 +163,7 @@ export function normalizeLayer(
         })
       : undefined;
     return clean({
-      ...base,
+      ...keepTextOnCanvas(base, W, H, id, warnings),
       type: "text" as const,
       // Weaker models double-escape line breaks and send a literal backslash-n.
       text: raw.text.replace(/\\n/g, "\n").slice(0, 3000),

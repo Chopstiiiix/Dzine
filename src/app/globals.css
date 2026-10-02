@@ -142,6 +142,68 @@ button:disabled {
   }
 }
 
+/* Painting loader. It sits on the white artboard, so its colours are fixed rather than themed. */
+.dz-paint-canvas {
+  fill: none;
+  stroke: #d9d8d1;
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+}
+.dz-paint-sketch,
+.dz-paint-stroke {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+.dz-paint-sketch {
+  stroke: #9b9a94;
+  stroke-width: 1.5;
+  animation: dz-sketch 4.8s linear infinite;
+}
+.dz-paint-stroke {
+  stroke: var(--accent);
+  stroke-width: 9;
+  opacity: 0.9;
+  animation: dz-brush 4.8s linear infinite;
+}
+.dz-paint-wood { fill: #f0c48a; }
+.dz-paint-lead { fill: #3a3935; }
+.dz-paint-pencil { fill: #f5b300; }
+.dz-paint-eraser { fill: #e98a8a; }
+.dz-paint-bristles { fill: var(--accent); }
+.dz-paint-ferrule { fill: #b9b8b1; }
+.dz-paint-handle {
+  stroke: #3a3935;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+}
+
+@keyframes dz-sketch {
+  0% { stroke-dashoffset: 1; opacity: 1; }
+  40% { stroke-dashoffset: 0; }
+  88% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+@keyframes dz-brush {
+  0%, 42% { stroke-dashoffset: 1; opacity: 0.9; }
+  85% { stroke-dashoffset: 0; }
+  92% { stroke-dashoffset: 0; opacity: 0.9; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dz-paint-sketch,
+  .dz-paint-stroke {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .dz-paint-tool {
+    display: none;
+  }
+}
+
 .dz-scroll {
   scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;

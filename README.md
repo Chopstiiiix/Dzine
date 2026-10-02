@@ -46,6 +46,18 @@ to go faster.
 A local model is a weaker designer than Claude, and background removal is off in this mode.
 This setup only works on your own machine, not on Vercel.
 
+## Design knowledge
+
+- **Layout library:** about 23,000 professional templates from the Crello dataset (CDLA-Permissive-2.0,
+  commercial use allowed) in `src/lib/agent/examples/crello.json.gz`. For every brief the designer is shown the
+  closest few, rescaled to the canvas. Rebuild with `uv run --with duckdb scripts/import_crello.py`.
+- **Learning loop:** a downloaded design that needed two revisions or fewer is saved, with its text masked and
+  images stripped, as a reference for future briefs (`dzine_examples` table, or `.dzine/learned.json` in demo mode).
+- **Fonts:** about 1,700 families (all of Google Fonts plus Fontshare, all free for commercial use) that the
+  designer finds with its `search_fonts` tool. Rebuild with `python3 scripts/import_fonts.py`.
+- **Inspiration links:** a Pinterest, Are.na or Dribbble link in a message becomes a style reference.
+- `npm run check` runs the self-checks.
+
 ## Go live
 
 1. In your terminal, in this folder: `cp .env.example .env.local`

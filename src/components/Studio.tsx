@@ -10,6 +10,7 @@ import type { Asset, Design, Layer, TextLayer } from "@/lib/design/types";
 import { type Ratio, getRatio } from "@/lib/ratios";
 import type { ChatMessage } from "@/lib/store/types";
 import { type Attachment, ChatPanel } from "./ChatPanel";
+import { PaintingLoader } from "./PaintingLoader";
 import { DesignCanvas } from "./DesignCanvas";
 import { Logo } from "./Logo";
 import { type Account, Paywall } from "./Paywall";
@@ -351,6 +352,7 @@ export function Studio({ projectId }: { projectId: string }) {
       const scale = getRatio(design.ratio).scale;
       const blob = await renderPng(nodeRef.current, design, scale);
       download(blob, `${slug(title)}-${Math.round(design.width * scale)}x${Math.round(design.height * scale)}.png`);
+      fetch(`/api/projects/${projectId}/learn`, { method: "POST" }).catch(() => {});
     } catch {
       setNotice("The export failed. Try again, or use Chrome if it keeps happening.");
     } finally {
@@ -441,9 +443,16 @@ export function Studio({ projectId }: { projectId: string }) {
             locked={busy || exporting}
             working={busy}
             empty={
-              <p className="max-w-[70%] text-center text-[13px] leading-relaxed text-[#9b9a94]">
-                {busy ? "Getting started…" : "Your design will appear here as it's made."}
-              </p>
+              busy ? (
+                <div className="flex flex-col items-center gap-3" role="status">
+                  <PaintingLoader />
+                  <p className="text-center text-[13px] font-medium text-[#73726c]">Designing…</p>
+                </div>
+              ) : (
+                <p className="max-w-[70%] text-center text-[13px] leading-relaxed text-[#9b9a94]">
+                  Your design will appear here as it&apos;s made.
+                </p>
+              )
             }
           />
 

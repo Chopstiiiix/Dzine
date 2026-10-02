@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check": "npx -y tsx --tsconfig tsconfig.json scripts/check.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

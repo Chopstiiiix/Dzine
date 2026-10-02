@@ -105,6 +105,19 @@ export const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "search_fonts",
+    description:
+      "Search the full font library (about 1,700 families, all free for commercial use) by style, mood or name. Returns matching families with category, weights and style tags. Free: does not use the image budget.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Style words, e.g. 'graffiti', 'elegant wedding script', 'bold condensed sports', 'retro 70s'." },
+        category: { type: "string", enum: ["display", "serif", "sans", "script", "mono-tech"] },
+      },
+      required: ["query"],
+    },
+  },
+  {
     name: "remove_background",
     description:
       "Cut the main subject out of an image asset and return a new transparent asset (kind: cutout). Does not count against the image budget.",
@@ -164,6 +177,7 @@ export const DESIGN_TOOLS = new Set(["render_design", "patch_design"]);
 export const TOOL_STATUS: Record<string, string> = {
   generate_image: "Creating imagery",
   remove_background: "Cutting out the subject",
+  search_fonts: "Choosing type",
   render_design: "Composing the layout",
   patch_design: "Updating the design",
 };

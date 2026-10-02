@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import type { Design, TextLayer } from "@/lib/design/types";
-import { fontCssUrl } from "@/lib/fonts";
 
 // Google Fonts are fetched as CSS text and injected inline. That keeps the @font-face
 // rules readable by our exporter, which a cross-origin <link> would not allow.
@@ -12,7 +11,7 @@ const cssByFamily = new Map<string, Promise<string>>();
 export function ensureFont(family: string): Promise<string> {
   let p = cssByFamily.get(family);
   if (!p) {
-    p = fetch(fontCssUrl(family))
+    p = fetch(`/api/fonts/css?family=${encodeURIComponent(family)}`)
       .then((r) => (r.ok ? r.text() : ""))
       .catch(() => "")
       .then((css) => {

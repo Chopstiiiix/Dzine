@@ -5,7 +5,10 @@ import { applyPatch, normalizeDesign } from "@/lib/design/normalize";
 import type { Asset, Design } from "@/lib/design/types";
 import { IMAGE_ASPECTS, type Ratio } from "@/lib/ratios";
 import type { ChatMessage, Pending, Project, Store } from "@/lib/store/types";
+import { describeFont, searchFonts } from "@/lib/fonts";
+import { referenceBlock } from "./examples";
 import { generateImage, removeBackground } from "./images";
+import { findLinks, imageFromLink } from "./links";
 import { SYSTEM_PROMPT, contextBlock } from "./prompt";
 import { DESIGN_TOOLS, TOOLS, TOOL_STATUS } from "./tools";
 
@@ -130,9 +133,29 @@ export async function runAgent(run: AgentRun): Promise<void> {
       content.push({ type: "text", text: `Attached asset ${a.id} (label: ${a.label}, file: "${a.name}"${size}):` });
       content.push(await imageBlock(store, a));
     }
+    for (const link of findLinks(input.text)) {
+      try {
+        const img = await imageFromLink(link);
+        const a = await store.addAsset(project.id, {
+          kind: "upload",
+          label: "reference",
+          name: new URL(link).hostname.replace(/^www\./, "").slice(0, 80),
+          ...img,
+        });
+        addAsset(a);
+        content.push({ type: "text", text: `Reference image from the link ${link} (asset ${a.id}, label: reference):` });
+        content.push(await imageBlock(store, a));
+      } catch (err) {
+        const why = err instanceof Error ? err.message : "unknown error";
+        content.push({ type: "text", text: `Could not read the link ${link}: ${why} Ask the user to upload the image instead if it matters.` });
+      }
+    }
     content.push({ type: "text", text: input.text || "(see attachments)" });
     history.push({ role: "user", content });
   }
+
+  // Layouts to learn from, picked once per turn from the user's own words.
+  const references = input.kind === "user" ? await referenceBlock(input.text, ratio) : "";
 
   const finish = (text: string) => text.replace(/\n{3,}/g, "\n\n").trim();
 
@@ -184,6 +207,14 @@ export async function runAgent(run: AgentRun): Promise<void> {
           ? `Created asset ${asset.id}. Image generation is not configured, so this is a plain gradient placeholder: design around it.`
           : `Created asset ${asset.id} (${asset.width}x${asset.height}). This is the image:`;
         return { result: ok(use.id, [{ type: "text", text: note }, await imageBlock(store, asset)]) };
+      }
+
+      if (use.name === "search_fonts") {
+        const found = searchFonts(String(args.query ?? ""), typeof args.category === "string" ? args.category : undefined);
+        const text = found.length
+          ? `Fonts matching "${args.query}":\n${found.map(describeFont).join("\n")}`
+          : `No fonts match "${args.query}". Try broader words (e.g. 'handwritten', 'vintage', 'bold').`;
+        return { result: ok(use.id, [{ type: "text", text }]) };
       }
 
       if (use.name === "remove_background") {
@@ -253,6 +284,7 @@ export async function runAgent(run: AgentRun): Promise<void> {
           type: "text",
           text: contextBlock({ ratio, assets, design, imagesLeft: Math.max(0, serverConfig.maxImagesPerTurn - imagesUsed) }),
         },
+        ...(references ? [{ type: "text" as const, text: references }] : []),
       ],
       tools: TOOLS,
       messages: trimHistory(history),
