@@ -246,8 +246,9 @@ export function Studio({ projectId }: { projectId: string }) {
           form.append("label", a.label);
           form.append("name", a.file.name);
           const res = await fetch("/api/assets", { method: "POST", body: form });
-          const body = await res.json();
-          if (!res.ok) throw new Error(body.error || "Upload failed.");
+          // A proxy in front of us (e.g. a firewall) can answer with an HTML page instead of JSON.
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok || !body.asset) throw new Error(body.error || `Upload failed (${res.status}). Please try again.`);
           uploaded.push(body.asset);
         }
       } catch (err) {
