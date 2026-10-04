@@ -35,7 +35,7 @@ text: { text, font, size, sizing, weight, color, gradient, align ("left" | "cent
   - gradient: a CSS gradient that fills the letters. stroke: outlined type (set color to "transparent" for hollow letters).
   - bg: a filled label or pill behind the text (dates, tags, prices).
 
-shape: { shape ("rect" | "ellipse"), fill (CSS colour or gradient), radius, border { width, color }, shadow, blur }
+shape: { shape ("rect" | "ellipse" | "triangle" | "diamond" | "hexagon" | "star"), fill (CSS colour or gradient), radius, border { width, color }, shadow, blur }
   - Use for colour blocks, bars, rules (a thin rect), frames (border, no fill), scrims (a gradient from transparent to dark so type stays readable over a photo), and glows (ellipse with radial gradient and blur).
 
 svg: { svg } one self-contained <svg> element with a viewBox, scaled to the layer box. Use for custom vector decoration: starbursts, arcs, curved text on a path, barcodes, grids, halftone dots, icons, hand-drawn scribbles. No scripts, no external references, no <image>.

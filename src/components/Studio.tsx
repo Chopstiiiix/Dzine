@@ -1,18 +1,20 @@
 "use client";
 
-import { ArrowDown, ArrowLeft, ArrowUp, Download, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, Download, Layers, Redo2, Trash2, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { AgentEvent } from "@/lib/agent/run";
 import { download, renderPng, renderPreview } from "@/lib/client/export";
 import { prepareImage } from "@/lib/client/upload";
-import type { Asset, Design, Layer, TextLayer } from "@/lib/design/types";
+import type { Asset, Design, Layer, ShapeKind, TextLayer } from "@/lib/design/types";
 import { type Ratio, getRatio } from "@/lib/ratios";
 import type { ChatMessage } from "@/lib/store/types";
+import { CanvasTools } from "./CanvasTools";
+import { LayersPanel, layerName } from "./LayersPanel";
 import { type Attachment, ChatPanel } from "./ChatPanel";
 import { PaintingLoader } from "./PaintingLoader";
 import type { Style } from "./StylePicker";
-import { DesignCanvas } from "./DesignCanvas";
+import { type CanvasTool, DesignCanvas } from "./DesignCanvas";
 import { Logo } from "./Logo";
 import { type Account, Paywall } from "./Paywall";
 import { RatioPicker } from "./RatioPicker";
@@ -38,6 +40,12 @@ async function* readEvents(res: Response): AsyncGenerator<AgentEvent> {
   }
 }
 
+const ICON_BTN = "flex h-9 w-9 items-center justify-center rounded-lg text-muted transition hover:bg-soft hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent";
+
+const SHAPE_NAMES: Record<ShapeKind | "rounded", string> = {
+  rect: "Rectangle", rounded: "Rounded rectangle", ellipse: "Circle", triangle: "Triangle", diamond: "Diamond", hexagon: "Hexagon", star: "Star",
+};
+
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "dzine";
 
 export function Studio({ projectId }: { projectId: string }) {
@@ -55,8 +63,11 @@ export function Studio({ projectId }: { projectId: string }) {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [paywall, setPaywall] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [tool, setTool] = useState<CanvasTool>("select");
+  const [layersOpen, setLayersOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [cutting, setCutting] = useState(false);
   // ponytail: the picked style lives for this session only; store it on the project if users expect it to stick.
   const [style, setStyle] = useState<Style | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -123,15 +134,59 @@ export function Studio({ projectId }: { projectId: string }) {
     }
   }, [patchProject]);
 
-  const editDesign = useCallback(
-    (next: Design, commit: boolean) => {
-      setDesign(next);
-      if (!commit) return;
+  const scheduleSave = useCallback(
+    (next: Design) => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => void patchProject({ design: next }), 500);
     },
     [patchProject],
   );
+
+  // Undo history of committed designs. An agent turn counts as one step.
+  const hist = useRef({ past: [] as Design[], future: [] as Design[], committed: null as Design | null, last: 0 });
+  const [steps, setSteps] = useState({ undo: 0, redo: 0 });
+  const syncSteps = () => setSteps({ undo: hist.current.past.length, redo: hist.current.future.length });
+
+  const record = (before: Design | null, after: Design | null) => {
+    if (before && after && before !== after) {
+      // Rapid commits (a colour picker or slider being dragged) collapse into one step.
+      if (Date.now() - hist.current.last > 600) hist.current.past = [...hist.current.past, before].slice(-100);
+      hist.current.last = Date.now();
+      hist.current.future = [];
+    }
+    hist.current.committed = after;
+    syncSteps();
+  };
+
+  const editDesign = (next: Design, commit: boolean) => {
+    // The first edit after loading starts the history from the design as it was.
+    if (!hist.current.committed) hist.current.committed = designRef.current;
+    setDesign(next);
+    if (!commit) return;
+    record(hist.current.committed, next);
+    scheduleSave(next);
+  };
+
+  const travel = (dir: "undo" | "redo") => {
+    const from = dir === "undo" ? hist.current.past : hist.current.future;
+    const target = from.at(-1);
+    if (!target || !hist.current.committed || busy) return;
+    if (dir === "undo") {
+      hist.current.past = hist.current.past.slice(0, -1);
+      hist.current.future = [...hist.current.future, hist.current.committed];
+    } else {
+      hist.current.future = hist.current.future.slice(0, -1);
+      hist.current.past = [...hist.current.past, hist.current.committed];
+    }
+    hist.current.committed = target;
+    hist.current.last = 0;
+    syncSteps();
+    setDesign(target);
+    setSelectedIds((ids) => ids.filter((id) => target.layers.some((l) => l.id === id)));
+    scheduleSave(target);
+  };
+  const undo = () => travel("undo");
+  const redo = () => travel("redo");
 
   // ---------------------------------------------------------------- agent turns
 
@@ -185,7 +240,8 @@ export function Studio({ projectId }: { projectId: string }) {
     setBusy(true);
     setError(null);
     setStatus(null);
-    setSelectedId(null);
+    setSelectedIds([]);
+    const before = hist.current.committed ?? designRef.current;
     try {
       let res = await post(body);
       if (res.status === 402) {
@@ -222,6 +278,8 @@ export function Studio({ projectId }: { projectId: string }) {
     } finally {
       setBusy(false);
       setStatus(null);
+      hist.current.last = 0;
+      record(before, designRef.current);
       setTimeout(() => void saveThumb(), 600);
     }
   };
@@ -298,7 +356,8 @@ export function Studio({ projectId }: { projectId: string }) {
 
   // ---------------------------------------------------------------- manual edits
 
-  const selected = design?.layers.find((l) => l.id === selectedId) ?? null;
+  const selection = design?.layers.filter((l) => selectedIds.includes(l.id)) ?? [];
+  const selected = selection.length === 1 ? selection[0] : null;
 
   const updateLayer = (id: string, props: Partial<Layer>, commit = true) => {
     const d = designRef.current;
@@ -306,11 +365,18 @@ export function Studio({ projectId }: { projectId: string }) {
     editDesign({ ...d, layers: d.layers.map((l) => (l.id === id ? ({ ...l, ...props } as Layer) : l)) }, commit);
   };
 
-  const removeLayer = (id: string) => {
+  /** Applies a change to every selected layer; return null to leave one alone. */
+  const patchSelected = (fn: (l: Layer) => Partial<Layer> | null) => {
     const d = designRef.current;
-    if (!d) return;
-    editDesign({ ...d, layers: d.layers.filter((l) => l.id !== id) }, true);
-    setSelectedId(null);
+    if (!d || !selectedIds.length) return;
+    editDesign({ ...d, layers: d.layers.map((l) => (selectedIds.includes(l.id) ? ({ ...l, ...fn(l) } as Layer) : l)) }, true);
+  };
+
+  const removeSelected = () => {
+    const d = designRef.current;
+    if (!d || !selectedIds.length) return;
+    editDesign({ ...d, layers: d.layers.filter((l) => !selectedIds.includes(l.id)) }, true);
+    setSelectedIds([]);
   };
 
   const shiftLayer = (id: string, dir: 1 | -1) => {
@@ -324,34 +390,94 @@ export function Studio({ projectId }: { projectId: string }) {
     editDesign({ ...d, layers }, true);
   };
 
+  const setBackground = (background: string) => {
+    const d = designRef.current;
+    if (d) editDesign({ ...d, background }, true);
+  };
+
+  const addLayer = (kind: "text" | ShapeKind | "rounded") => {
+    const d = designRef.current;
+    if (!d) return;
+    const id = `${kind}-${Math.random().toString(36).slice(2, 7)}`;
+    const W = d.width;
+    const H = d.height;
+    const near = d.layers.find((l): l is TextLayer => l.type === "text");
+    const side = Math.round(Math.min(W, H) * 0.3);
+    const layer: Layer =
+      kind === "text"
+        ? {
+            id, type: "text", name: "Text", text: "Your text", font: near?.font ?? "Inter", weight: near?.weight,
+            size: Math.round(W * 0.09), sizing: "fit", color: near?.color ?? "#111111", align: "center", valign: "middle",
+            x: Math.round(W * 0.15), y: Math.round(H * 0.42), w: Math.round(W * 0.7), h: Math.round(H * 0.16),
+          }
+        : {
+            id, type: "shape", name: SHAPE_NAMES[kind], shape: kind === "rounded" ? "rect" : kind, fill: "#e2554f",
+            radius: kind === "rounded" ? Math.round(side * 0.15) : undefined,
+            x: Math.round((W - side) / 2), y: Math.round((H - side) / 2), w: side, h: side,
+          };
+    editDesign({ ...d, layers: [...d.layers, layer] }, true);
+    setSelectedIds([id]);
+    setTool("select");
+  };
+
+  const cutout = async () => {
+    const layer = selected;
+    if (!layer || layer.type !== "image" || cutting) return;
+    setCutting(true);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/cutout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assetId: layer.asset }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.asset) throw new Error(body.error || `Background removal failed (${res.status}).`);
+      setAssets((a) => [...a, body.asset]);
+      updateLayer(layer.id, { asset: body.asset.id } as Partial<Layer>);
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : "Background removal failed.");
+    } finally {
+      setCutting(false);
+    }
+  };
+
+  // Re-bound every render so the handler always sees the current selection and history.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement;
-      if (el.closest("input, textarea, [contenteditable]") || !selectedId || busy) return;
-      const d = designRef.current;
-      const layer = d?.layers.find((l) => l.id === selectedId);
-      if (!layer) return;
+      if (el.closest("input, textarea, select, [contenteditable]") || busy || !designRef.current) return;
+      const mod = e.metaKey || e.ctrlKey;
+      const key = e.key.toLowerCase();
       const step = e.shiftKey ? 10 : 1;
-      if (e.key === "Escape") setSelectedId(null);
-      else if (e.key === "Delete" || e.key === "Backspace") removeLayer(layer.id);
-      else if (e.key === "ArrowLeft") updateLayer(layer.id, { x: layer.x - step });
-      else if (e.key === "ArrowRight") updateLayer(layer.id, { x: layer.x + step });
-      else if (e.key === "ArrowUp") updateLayer(layer.id, { y: layer.y - step });
-      else if (e.key === "ArrowDown") updateLayer(layer.id, { y: layer.y + step });
+      const nudge = (dx: number, dy: number) => patchSelected((l) => ({ x: l.x + dx, y: l.y + dy }));
+
+      if (mod && key === "z") travel(e.shiftKey ? "redo" : "undo");
+      else if (mod && key === "y") redo();
+      else if (mod && key === "a") setSelectedIds(designRef.current.layers.map((l) => l.id));
+      else if (mod) return;
+      else if (key === "v") setTool("move");
+      else if (key === "a") setTool("select");
+      else if (key === "m") setTool("marquee");
+      else if (!selectedIds.length) return;
+      else if (e.key === "Escape") setSelectedIds([]);
+      else if (e.key === "Delete" || e.key === "Backspace") removeSelected();
+      else if (e.key === "ArrowLeft") nudge(-step, 0);
+      else if (e.key === "ArrowRight") nudge(step, 0);
+      else if (e.key === "ArrowUp") nudge(0, -step);
+      else if (e.key === "ArrowDown") nudge(0, step);
       else return;
       e.preventDefault();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, busy]);
+  });
 
   // ---------------------------------------------------------------- export
 
   const exportPng = async () => {
     if (!nodeRef.current || !design || exporting) return;
     setExporting(true);
-    setSelectedId(null);
+    setSelectedIds([]);
     try {
       const scale = getRatio(design.ratio).scale;
       const blob = await renderPng(nodeRef.current, design, scale);
@@ -420,7 +546,26 @@ export function Studio({ projectId }: { projectId: string }) {
       <main className="dz-stage relative flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="flex h-14 shrink-0 items-center gap-2 px-3 md:px-4">
           <RatioPicker value={ratio} onPick={pickRatio} disabled={busy || !loaded} hasDesign={!!design} />
+          <div className="ml-1 flex items-center">
+            <button type="button" title="Undo (⌘Z)" aria-label="Undo" onClick={undo} disabled={busy || !steps.undo} className={ICON_BTN}>
+              <Undo2 size={16} />
+            </button>
+            <button type="button" title="Redo (⇧⌘Z)" aria-label="Redo" onClick={redo} disabled={busy || !steps.redo} className={ICON_BTN}>
+              <Redo2 size={16} />
+            </button>
+          </div>
           <div className="flex-1" />
+          <button
+            type="button"
+            title="Layers"
+            aria-label="Layers"
+            aria-pressed={layersOpen}
+            onClick={() => setLayersOpen((o) => !o)}
+            disabled={!design}
+            className={`${ICON_BTN} ${layersOpen ? "bg-soft text-ink" : ""}`}
+          >
+            <Layers size={16} />
+          </button>
           <span className="hidden text-[12px] tabular-nums text-muted sm:inline">
             {outW} × {outH} px
           </span>
@@ -441,8 +586,9 @@ export function Studio({ projectId }: { projectId: string }) {
             blank={{ w: ratio.w, h: ratio.h }}
             assets={assets}
             nodeRef={nodeRef}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
+            selectedIds={selectedIds}
+            onSelect={setSelectedIds}
+            tool={tool}
             onChange={editDesign}
             locked={busy || exporting}
             working={busy}
@@ -460,6 +606,19 @@ export function Studio({ projectId }: { projectId: string }) {
             }
           />
 
+          <CanvasTools
+            design={design}
+            selection={selection}
+            tool={tool}
+            onTool={setTool}
+            onPatch={patchSelected}
+            onBackground={setBackground}
+            onAdd={addLayer}
+            onCutout={() => void cutout()}
+            cutting={cutting}
+            disabled={busy || exporting || !loaded}
+          />
+
           {busy && status ? (
             <div className="pointer-events-none absolute left-1/2 top-2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-line bg-panel px-3 py-1.5 text-[12.5px] font-medium shadow-sm">
               <span className="dz-dot" />
@@ -467,32 +626,47 @@ export function Studio({ projectId }: { projectId: string }) {
             </div>
           ) : null}
 
-          {selected && !busy ? (
+          {layersOpen && design ? (
+            <LayersPanel
+              layers={design.layers}
+              assets={assets}
+              selectedIds={selectedIds}
+              onSelect={setSelectedIds}
+              onToggleVisible={(l) => updateLayer(l.id, { opacity: l.opacity === 0 ? undefined : 0 })}
+              onClose={() => setLayersOpen(false)}
+            />
+          ) : null}
+
+          {selection.length && !busy ? (
             <div
               className="absolute bottom-4 left-1/2 flex w-[min(520px,calc(100%-24px))] -translate-x-1/2 items-end gap-1.5 rounded-xl border border-line bg-panel p-1.5 shadow-lg"
               onPointerDown={(e) => e.stopPropagation()}
             >
-              {selected.type === "text" ? (
+              {selected?.type === "text" ? (
                 <textarea
                   aria-label="Edit text"
-                  value={(selected as TextLayer).text}
-                  rows={Math.min(4, (selected as TextLayer).text.split("\n").length)}
+                  value={selected.text}
+                  rows={Math.min(4, selected.text.split("\n").length)}
                   onChange={(e) => updateLayer(selected.id, { text: e.target.value || " " } as Partial<Layer>)}
-                  onKeyDown={(e) => e.key === "Escape" && setSelectedId(null)}
+                  onKeyDown={(e) => e.key === "Escape" && setSelectedIds([])}
                   className="min-h-9 min-w-0 flex-1 resize-none rounded-lg bg-soft px-2.5 py-2 text-[16px] leading-snug outline-none md:text-[13px]"
                 />
               ) : (
                 <span className="flex h-9 flex-1 items-center truncate px-2 text-[13px] text-muted">
-                  {selected.name || selected.id} · drag to move
+                  {selected ? `${layerName(selected)} · drag to move` : `${selection.length} layers selected · drag to move them together`}
                 </span>
               )}
-              <button type="button" title="Send backward" aria-label="Send backward" onClick={() => shiftLayer(selected.id, -1)} className="flex h-9 w-9 items-center justify-center rounded-lg text-muted hover:bg-soft hover:text-ink">
-                <ArrowDown size={16} />
-              </button>
-              <button type="button" title="Bring forward" aria-label="Bring forward" onClick={() => shiftLayer(selected.id, 1)} className="flex h-9 w-9 items-center justify-center rounded-lg text-muted hover:bg-soft hover:text-ink">
-                <ArrowUp size={16} />
-              </button>
-              <button type="button" title="Delete layer" aria-label="Delete layer" onClick={() => removeLayer(selected.id)} className="flex h-9 w-9 items-center justify-center rounded-lg text-muted hover:bg-soft hover:text-danger">
+              {selected ? (
+                <>
+                  <button type="button" title="Send backward" aria-label="Send backward" onClick={() => shiftLayer(selected.id, -1)} className={ICON_BTN}>
+                    <ArrowDown size={16} />
+                  </button>
+                  <button type="button" title="Bring forward" aria-label="Bring forward" onClick={() => shiftLayer(selected.id, 1)} className={ICON_BTN}>
+                    <ArrowUp size={16} />
+                  </button>
+                </>
+              ) : null}
+              <button type="button" title="Delete" aria-label="Delete selected" onClick={removeSelected} className={`${ICON_BTN} hover:text-danger`}>
                 <Trash2 size={16} />
               </button>
             </div>

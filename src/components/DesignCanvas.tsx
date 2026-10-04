@@ -177,7 +177,24 @@ function TextView({ layer, fontTick }: { layer: TextLayer; fontTick: number }) {
   );
 }
 
+// Polygon shapes are clipped boxes, so their shadow has to be a drop-shadow on a wrapper.
+const POLYGONS: Partial<Record<ShapeLayer["shape"], string>> = {
+  triangle: "polygon(50% 0, 100% 100%, 0 100%)",
+  diamond: "polygon(50% 0, 100% 50%, 50% 100%, 0 50%)",
+  hexagon: "polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%)",
+  star: "polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)",
+};
+
 function ShapeView({ layer }: { layer: ShapeLayer }) {
+  const poly = POLYGONS[layer.shape];
+  if (poly) {
+    const filter = [layer.shadow && `drop-shadow(${layer.shadow})`, layer.blur && `blur(${layer.blur}px)`].filter(Boolean).join(" ");
+    return (
+      <div style={{ width: "100%", height: "100%", filter: filter || undefined }}>
+        <div style={{ width: "100%", height: "100%", background: layer.fill, clipPath: poly }} />
+      </div>
+    );
+  }
   return (
     <div
       style={{
@@ -205,14 +222,26 @@ function SvgView({ layer }: { layer: SvgLayer }) {
   return <div className="dz-svg" style={{ width: "100%", height: "100%" }} dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
+const HANDLES: [number, number][] = [[-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]];
+
+/**
+ * select  = click to pick (Shift adds), drag moves; full-bleed backdrops stay put.
+ * move    = drag moves whatever is under the pointer, backdrops included.
+ * marquee = drag a box; layers fully inside it get selected.
+ */
+export type CanvasTool = "select" | "move" | "marquee";
+
+type Box = { x: number; y: number; w: number; h: number };
+
 export type CanvasProps = {
   design: Design | null;
   /** Canvas size to show while there is no design yet. */
   blank: { w: number; h: number };
   assets: Asset[];
   nodeRef: RefObject<HTMLDivElement | null>;
-  selectedId?: string | null;
-  onSelect?: (id: string | null) => void;
+  selectedIds?: string[];
+  onSelect?: (ids: string[]) => void;
+  tool?: CanvasTool;
   /** Manual edit. `commit` is false while dragging and true when the change should be saved. */
   onChange?: (design: Design, commit: boolean) => void;
   locked?: boolean;
@@ -220,9 +249,16 @@ export type CanvasProps = {
   empty?: ReactNode;
 };
 
-export function DesignCanvas({ design, blank, assets, nodeRef, selectedId, onSelect, onChange, locked, working, empty }: CanvasProps) {
+type Gesture =
+  | { kind: "drag"; px: number; py: number; start: Map<string, { x: number; y: number }>; moved: boolean; collapseTo: string | null }
+  | { kind: "resize"; id: string; dx: number; dy: number; px: number; py: number; x: number; y: number; w: number; h: number; keep: boolean }
+  | { kind: "rotate"; id: string; cx: number; cy: number }
+  | { kind: "marquee"; x: number; y: number; additive: boolean };
+
+export function DesignCanvas({ design, blank, assets, nodeRef, selectedIds = [], onSelect, tool = "select", onChange, locked, working, empty }: CanvasProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0);
+  const [box, setBox] = useState<Box | null>(null);
   const W = design?.width ?? blank.w;
   const H = design?.height ?? blank.h;
   const fontTick = useFonts(designFonts(design));
@@ -233,7 +269,8 @@ export function DesignCanvas({ design, blank, assets, nodeRef, selectedId, onSel
     if (!el) return;
     const measure = () => {
       const pad = el.clientWidth < 520 ? 16 : 40;
-      setScale(Math.max(0.02, Math.min((el.clientWidth - pad * 2) / W, (el.clientHeight - pad * 2) / H, 1.5)));
+      const padX = el.clientWidth < 520 ? 16 : 72; // room for the tool rail on the left
+      setScale(Math.max(0.02, Math.min((el.clientWidth - padX * 2) / W, (el.clientHeight - pad * 2) / H, 1.5)));
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -241,44 +278,148 @@ export function DesignCanvas({ design, blank, assets, nodeRef, selectedId, onSel
     return () => ro.disconnect();
   }, [W, H]);
 
-  const drag = useRef<{ id: string; px: number; py: number; x: number; y: number; moved: boolean } | null>(null);
+  const gesture = useRef<Gesture | null>(null);
   const latest = useRef(design);
   useLayoutEffect(() => {
     latest.current = design;
   }, [design]);
 
-  const onLayerDown = (e: ReactPointerEvent, layer: Layer) => {
-    if (locked || !onSelect) return;
-    e.stopPropagation();
-    onSelect(layer.id);
-    const isBackdrop = layer.w >= W * 0.9 && layer.h >= H * 0.9;
-    if (isBackdrop || !onChange) return;
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    drag.current = { id: layer.id, px: e.clientX, py: e.clientY, x: layer.x, y: layer.y, moved: false };
+  const editable = !locked && !!onSelect;
+  /** Pointer position in design space. */
+  const toDesign = (e: { clientX: number; clientY: number }) => {
+    const r = nodeRef.current!.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / scale, y: (e.clientY - r.top) / scale };
+  };
+  const capture = (e: ReactPointerEvent) => (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  const commitLayers = (map: (l: Layer) => Layer, commit: boolean) => {
+    const current = latest.current;
+    if (current && onChange) onChange({ ...current, layers: current.layers.map(map) }, commit);
   };
 
-  const moveTo = (e: ReactPointerEvent, commit: boolean) => {
-    const d = drag.current;
-    const current = latest.current;
-    if (!d || !current || !onChange) return;
-    const dx = (e.clientX - d.px) / scale;
-    const dy = (e.clientY - d.py) / scale;
-    if (!d.moved && Math.hypot(dx, dy) < 3) {
-      if (commit) drag.current = null;
+  // ---------------------------------------------------------------- pointer down
+
+  const onLayerDown = (e: ReactPointerEvent, layer: Layer) => {
+    if (!editable || tool === "marquee") return; // the marquee starts on the wrapper
+    e.stopPropagation();
+    let ids = selectedIds;
+    if (e.shiftKey) ids = ids.includes(layer.id) ? ids.filter((x) => x !== layer.id) : [...ids, layer.id];
+    else if (!ids.includes(layer.id)) ids = [layer.id];
+    onSelect!(ids);
+    if (!onChange || !ids.includes(layer.id)) return;
+    const isBackdrop = layer.w >= W * 0.9 && layer.h >= H * 0.9;
+    if (tool === "select" && isBackdrop) return;
+    capture(e);
+    const layers = latest.current?.layers ?? [];
+    const start = new Map(layers.filter((l) => ids.includes(l.id)).map((l) => [l.id, { x: l.x, y: l.y }]));
+    // A plain click inside a group narrows the selection to that layer, unless it turns into a drag.
+    const collapseTo = !e.shiftKey && ids.length > 1 ? layer.id : null;
+    gesture.current = { kind: "drag", px: e.clientX, py: e.clientY, start, moved: false, collapseTo };
+  };
+
+  const onWrapDown = (e: ReactPointerEvent) => {
+    if (!editable) return;
+    if (tool !== "marquee" || !nodeRef.current) {
+      onSelect!([]);
       return;
     }
-    d.moved = true;
-    onChange(
-      { ...current, layers: current.layers.map((l) => (l.id === d.id ? { ...l, x: Math.round(d.x + dx), y: Math.round(d.y + dy) } : l)) },
-      commit,
-    );
-    if (commit) drag.current = null;
+    capture(e);
+    const p = toDesign(e);
+    gesture.current = { kind: "marquee", x: p.x, y: p.y, additive: e.shiftKey };
+    setBox({ x: p.x, y: p.y, w: 0, h: 0 });
   };
 
-  const selected = design?.layers.find((l) => l.id === selectedId);
+  const onHandleDown = (e: ReactPointerEvent, layer: Layer, dx: number, dy: number) => {
+    if (!editable || !onChange) return;
+    e.stopPropagation();
+    capture(e);
+    // Images keep their proportions from a corner; Shift does the same for anything else.
+    const keep = dx !== 0 && dy !== 0 && (layer.type === "image" || e.shiftKey);
+    gesture.current = { kind: "resize", id: layer.id, dx, dy, px: e.clientX, py: e.clientY, x: layer.x, y: layer.y, w: layer.w, h: layer.h, keep };
+  };
+
+  const onRotateDown = (e: ReactPointerEvent, layer: Layer) => {
+    if (!editable || !onChange) return;
+    e.stopPropagation();
+    capture(e);
+    gesture.current = { kind: "rotate", id: layer.id, cx: layer.x + layer.w / 2, cy: layer.y + layer.h / 2 };
+  };
+
+  // ---------------------------------------------------------------- move / up
+
+  const onMove = (e: ReactPointerEvent, commit: boolean) => {
+    const g = gesture.current;
+    if (!g) return;
+    if (commit) gesture.current = null;
+
+    if (g.kind === "marquee") {
+      const p = toDesign(e);
+      const r = { x: Math.min(g.x, p.x), y: Math.min(g.y, p.y), w: Math.abs(p.x - g.x), h: Math.abs(p.y - g.y) };
+      if (!commit) return setBox(r);
+      setBox(null);
+      const inside = (latest.current?.layers ?? [])
+        .filter((l) => l.x >= r.x && l.y >= r.y && l.x + l.w <= r.x + r.w && l.y + l.h <= r.y + r.h)
+        .map((l) => l.id);
+      if (r.w * scale < 4 && r.h * scale < 4) return onSelect!(g.additive ? selectedIds : []);
+      onSelect!(g.additive ? [...new Set([...selectedIds, ...inside])] : inside);
+      return;
+    }
+
+    if (g.kind === "drag") {
+      const dx = (e.clientX - g.px) / scale;
+      const dy = (e.clientY - g.py) / scale;
+      if (!g.moved && Math.hypot(dx, dy) < 3) {
+        if (commit && g.collapseTo) onSelect!([g.collapseTo]);
+        return;
+      }
+      g.moved = true;
+      commitLayers((l) => {
+        const s = g.start.get(l.id);
+        return s ? { ...l, x: Math.round(s.x + dx), y: Math.round(s.y + dy) } : l;
+      }, commit);
+      return;
+    }
+
+    if (g.kind === "resize") {
+      // ponytail: handles work in the unrotated frame, so resizing a rotated layer drifts a little.
+      const mx = (e.clientX - g.px) / scale;
+      const my = (e.clientY - g.py) / scale;
+      let w = Math.max(8, g.w + mx * g.dx);
+      let h = Math.max(8, g.h + my * g.dy);
+      if (g.keep) {
+        const k = Math.abs(mx) > Math.abs(my) ? w / g.w : h / g.h;
+        w = Math.max(8, g.w * k);
+        h = Math.max(8, g.h * k);
+      }
+      const x = g.dx === -1 ? g.x + g.w - w : g.x;
+      const y = g.dy === -1 ? g.y + g.h - h : g.y;
+      commitLayers((l) => (l.id === g.id ? { ...l, x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) } : l), commit);
+      return;
+    }
+
+    // rotate: angle from the layer's centre to the pointer, 0 = handle straight up.
+    const p = toDesign(e);
+    let deg = (Math.atan2(p.y - g.cy, p.x - g.cx) * 180) / Math.PI + 90;
+    if (e.shiftKey) deg = Math.round(deg / 15) * 15;
+    else if (Math.abs(deg - Math.round(deg / 90) * 90) < 4) deg = Math.round(deg / 90) * 90; // snap to square
+    deg = ((((Math.round(deg) + 180) % 360) + 360) % 360) - 180;
+    commitLayers((l) => (l.id === g.id ? { ...l, rotate: deg || undefined } : l), commit);
+  };
+
+  const selection = (design?.layers ?? []).filter((l) => selectedIds.includes(l.id));
+  const single = selection.length === 1 ? selection[0] : null;
+  const layerCursor = locked ? "default" : tool === "move" ? "move" : tool === "marquee" ? "crosshair" : "pointer";
 
   return (
-    <div ref={wrapRef} className="relative h-full w-full overflow-hidden" onPointerDown={() => onSelect?.(null)}>
+    <div
+      ref={wrapRef}
+      className="relative h-full w-full select-none overflow-hidden"
+      style={{ cursor: tool === "marquee" && !locked ? "crosshair" : undefined, touchAction: tool === "marquee" ? "none" : undefined }}
+      onPointerDown={onWrapDown}
+      // Captured pointers on layers and handles bubble up here, so one pair of handlers covers every gesture.
+      onPointerMove={(e) => onMove(e, false)}
+      onPointerUp={(e) => onMove(e, true)}
+      onPointerCancel={(e) => onMove(e, true)}
+    >
       <div
         className="absolute left-1/2 top-1/2"
         style={{ width: W * scale, height: H * scale, transform: "translate(-50%, -50%)", visibility: scale ? "visible" : "hidden" }}
@@ -304,10 +445,8 @@ export function DesignCanvas({ design, blank, assets, nodeRef, selectedId, onSel
               <div
                 key={layer.id}
                 data-layer={layer.id}
-                style={{ ...frame(layer), cursor: locked ? "default" : "pointer", touchAction: "none" }}
+                style={{ ...frame(layer), cursor: layerCursor, touchAction: "none" }}
                 onPointerDown={(e) => onLayerDown(e, layer)}
-                onPointerMove={(e) => moveTo(e, false)}
-                onPointerUp={(e) => moveTo(e, true)}
               >
                 {layer.type === "image" && <ImageView layer={layer} asset={assetById.get(layer.asset)} />}
                 {layer.type === "text" && <TextView layer={layer} fontTick={fontTick} />}
@@ -333,16 +472,56 @@ export function DesignCanvas({ design, blank, assets, nodeRef, selectedId, onSel
 
         {!design && empty ? <div className="absolute inset-0 flex items-center justify-center">{empty}</div> : null}
 
-        {selected && !locked ? (
+        {!locked
+          ? selection.map((l) => (
+              <div
+                key={l.id}
+                className="pointer-events-none absolute rounded-[2px] outline outline-[1.5px] outline-[var(--accent)]"
+                style={{
+                  left: l.x * scale,
+                  top: l.y * scale,
+                  width: l.w * scale,
+                  height: l.h * scale,
+                  transform: l.rotate ? `rotate(${l.rotate}deg)` : undefined,
+                }}
+              >
+                {single && onChange && tool !== "marquee" ? (
+                  <>
+                    <div aria-hidden className="absolute left-1/2 top-[-22px] h-[22px] w-px -translate-x-1/2 bg-[var(--accent)]" />
+                    <div
+                      aria-hidden
+                      title="Drag to rotate (Shift snaps to 15°)"
+                      className="pointer-events-auto absolute left-1/2 top-[-36px] flex h-7 w-7 -translate-x-1/2 cursor-grab items-center justify-center"
+                      style={{ touchAction: "none" }}
+                      onPointerDown={(e) => onRotateDown(e, l)}
+                    >
+                      <span className="h-3 w-3 rounded-full border-[1.5px] border-[var(--accent)] bg-white" />
+                    </div>
+                    {HANDLES.map(([dx, dy]) => (
+                      <div
+                        key={`${dx}${dy}`}
+                        aria-hidden
+                        className="pointer-events-auto absolute h-2.5 w-2.5 rounded-[2px] border-[1.5px] border-[var(--accent)] bg-white"
+                        style={{
+                          left: `${(dx + 1) * 50}%`,
+                          top: `${(dy + 1) * 50}%`,
+                          transform: "translate(-50%, -50%)",
+                          cursor: dx === 0 ? "ns-resize" : dy === 0 ? "ew-resize" : dx === dy ? "nwse-resize" : "nesw-resize",
+                          touchAction: "none",
+                        }}
+                        onPointerDown={(e) => onHandleDown(e, l, dx, dy)}
+                      />
+                    ))}
+                  </>
+                ) : null}
+              </div>
+            ))
+          : null}
+
+        {box ? (
           <div
-            className="pointer-events-none absolute rounded-[2px] outline outline-[1.5px] outline-[var(--accent)]"
-            style={{
-              left: selected.x * scale,
-              top: selected.y * scale,
-              width: selected.w * scale,
-              height: selected.h * scale,
-              transform: selected.rotate ? `rotate(${selected.rotate}deg)` : undefined,
-            }}
+            className="pointer-events-none absolute border border-dashed border-[var(--accent)] bg-[var(--accent)]/10"
+            style={{ left: box.x * scale, top: box.y * scale, width: box.w * scale, height: box.h * scale }}
           />
         ) : null}
       </div>

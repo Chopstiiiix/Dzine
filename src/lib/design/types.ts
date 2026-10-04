@@ -12,6 +12,9 @@ export type Mask = (typeof MASKS)[number];
 
 export type Border = { width: number; color: string };
 
+export const SHAPES = ["rect", "ellipse", "triangle", "diamond", "hexagon", "star"] as const;
+export type ShapeKind = (typeof SHAPES)[number];
+
 export type LayerBase = {
   id: string;
   name?: string;
@@ -82,7 +85,7 @@ export type TextLayer = LayerBase & {
 
 export type ShapeLayer = LayerBase & {
   type: "shape";
-  shape: "rect" | "ellipse";
+  shape: ShapeKind;
   /** CSS colour or gradient. */
   fill?: string;
   radius?: number;

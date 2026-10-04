@@ -2,6 +2,7 @@ import { findFont, nearestWeight } from "@/lib/fonts";
 import type { Ratio } from "@/lib/ratios";
 import {
   BLENDS,
+  SHAPES,
   MASKS,
   type Blend,
   type Border,
@@ -191,7 +192,7 @@ export function normalizeLayer(
     return clean({
       ...base,
       type: "shape" as const,
-      shape: oneOf(raw.shape, ["rect", "ellipse"] as const) ?? "rect",
+      shape: oneOf(raw.shape, SHAPES) ?? "rect",
       fill: cssValue(raw.fill),
       radius: optNum(raw.radius, 0, 5000),
       border: border(raw.border),

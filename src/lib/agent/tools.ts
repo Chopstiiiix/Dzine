@@ -1,5 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { BLENDS, MASKS } from "@/lib/design/types";
+import { BLENDS, MASKS, SHAPES } from "@/lib/design/types";
 import { IMAGE_ASPECTS } from "@/lib/ratios";
 import { TREATMENTS } from "./type-treatments";
 
@@ -70,7 +70,7 @@ const layerSchema = {
     },
 
     // shape
-    shape: { type: "string", enum: ["rect", "ellipse"] },
+    shape: { type: "string", enum: [...SHAPES] },
     fill: { type: "string", description: "shape: CSS colour or gradient." },
     blur: { type: "number", description: "shape: gaussian blur in px." },
 
