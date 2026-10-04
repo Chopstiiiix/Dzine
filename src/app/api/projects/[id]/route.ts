@@ -1,3 +1,4 @@
+import { running } from "@/lib/agent/running";
 import { revalidateDesign } from "@/lib/design/normalize";
 import { badRequest, json, notFound, unauthorized } from "@/lib/http";
 import { RATIOS, getRatio } from "@/lib/ratios";
@@ -16,6 +17,8 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/projects/[id]">
   ]);
   return json({
     project: { id: project.id, title: project.title, ratio: project.ratio, design: project.design, awaitingReview: !!project.pending },
+    /** An agent turn is in flight right now. */
+    running: running.has(id),
     messages,
     assets,
     credits,

@@ -1,5 +1,6 @@
 import { runMockAgent } from "@/lib/agent/mock";
 import { type AgentEvent, type AgentInput, runAgent } from "@/lib/agent/run";
+import { running } from "@/lib/agent/running";
 import { TREATMENTS } from "@/lib/agent/type-treatments";
 import { UNLIMITED_CREDITS, serverConfig } from "@/lib/config";
 import { badRequest, json, notFound, unauthorized } from "@/lib/http";
@@ -21,6 +22,7 @@ export async function POST(req: Request) {
   if (!body?.projectId) return badRequest("projectId is required.");
   const project = await store.getProject(String(body.projectId));
   if (!project) return notFound();
+  if (running.has(project.id)) return json({ error: "This design is still being worked on. Give it a moment." }, 409);
 
   let input: AgentInput;
   let charged = false;
@@ -56,6 +58,7 @@ export async function POST(req: Request) {
   }
 
   const encoder = new TextEncoder();
+  running.add(project.id);
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       let open = true;
@@ -67,6 +70,9 @@ export async function POST(req: Request) {
           open = false; // The browser went away. The turn still runs to completion and saves.
         }
       };
+      // Image generation and long model calls can go minutes without an event. Without traffic,
+      // Cloudflare (and most proxies) cut the connection and the browser loses the turn.
+      const heartbeat = setInterval(() => emit({ type: "ping" }), 15_000);
       const progress = { produced: false };
       if (credits !== null) emit({ type: "credits", credits });
 
@@ -90,6 +96,8 @@ export async function POST(req: Request) {
           message: `Something went wrong while designing${refunded ? ", so your credit was refunded" : ""}. Please try again.`,
         });
       } finally {
+        clearInterval(heartbeat);
+        running.delete(project.id);
         if (open) controller.close();
       }
     },

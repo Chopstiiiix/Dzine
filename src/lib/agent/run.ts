@@ -30,6 +30,8 @@ export type AgentEvent =
   | { type: "review" }
   | { type: "credits"; credits: number }
   | { type: "done"; message: ChatMessage | null }
+  /** Keeps proxies (Cloudflare drops a connection after ~100s of silence) from closing the stream. */
+  | { type: "ping" }
   | { type: "error"; message: string };
 
 export type AgentInput =

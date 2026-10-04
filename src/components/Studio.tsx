@@ -66,6 +66,7 @@ export function Studio({ projectId }: { projectId: string }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [tool, setTool] = useState<CanvasTool>("select");
   const [layersOpen, setLayersOpen] = useState(false);
+  const [resumeOnLoad, setResumeOnLoad] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [cutting, setCutting] = useState(false);
   // ponytail: the picked style lives for this session only; store it on the project if users expect it to stick.
@@ -98,6 +99,7 @@ export function Studio({ projectId }: { projectId: string }) {
       setMessages(data.messages);
       if (me.ok) setAccount(await me.json());
       setLoaded(true);
+      if (data.running || data.project.awaitingReview) setResumeOnLoad(true);
 
       const paid = new URLSearchParams(window.location.search).get("paid");
       if (paid) {
@@ -190,9 +192,12 @@ export function Studio({ projectId }: { projectId: string }) {
 
   // ---------------------------------------------------------------- agent turns
 
+  /** Plays one response stream into the UI. Returns true when the agent paused for a review. Throws if the stream was cut. */
   const consume = async (res: Response): Promise<boolean> => {
     let wantsReview = false;
+    let ended = false;
     for await (const ev of readEvents(res)) {
+      if (ev.type === "done" || ev.type === "error" || ev.type === "review") ended = true;
       switch (ev.type) {
         case "text":
           setDraft((d) => d + ev.delta);
@@ -225,6 +230,8 @@ export function Studio({ projectId }: { projectId: string }) {
           break;
       }
     }
+    // A cut connection can end the body quietly instead of throwing.
+    if (!ended) throw new Error("stream_dropped");
     return wantsReview;
   };
 
@@ -235,6 +242,67 @@ export function Studio({ projectId }: { projectId: string }) {
       body: JSON.stringify({ projectId, ...body }),
     });
 
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  /** Sends the agent a snapshot of the canvas so a paused turn can carry on. */
+  const postReview = async () => {
+    await sleep(350);
+    let image: string | null = null;
+    try {
+      if (nodeRef.current && designRef.current) image = await renderPreview(nodeRef.current, designRef.current, 900, 0.82);
+    } catch {
+      image = null;
+    }
+    const res = await post({ review: { image } });
+    if (!res.ok || !res.body) throw new Error("request_failed");
+    return res;
+  };
+
+  /** Follows a turn to the end, answering the agent's review pauses with a snapshot. */
+  const drive = async (first: Response) => {
+    let res = first;
+    for (let pass = 0; pass < 4; pass++) {
+      if (!(await consume(res))) return;
+      res = await postReview();
+    }
+  };
+
+  /**
+   * The stream was lost (a proxy cut it, the network blinked, the page was reloaded) but the
+   * turn keeps running on the server. Watch the project until it finishes, show what it made,
+   * and if it is waiting for a review snapshot, send one so it can finish.
+   */
+  const reattach = async () => {
+    setDraft("");
+    setStatus("Reconnecting…");
+    const until = Date.now() + 15 * 60_000;
+    while (Date.now() < until) {
+      await sleep(3000);
+      try {
+        const r = await fetch(`/api/projects/${projectId}`);
+        if (!r.ok) continue;
+        const data = await r.json();
+        if (data.project.design) setDesign(data.project.design);
+        setAssets(data.assets);
+        setTitle(data.project.title);
+        if (data.running) {
+          setStatus("Still designing…");
+          continue;
+        }
+        if (data.project.awaitingReview) {
+          setStatus("Checking the details");
+          await drive(await postReview());
+        } else {
+          setMessages(data.messages);
+        }
+        return;
+      } catch {
+        setStatus("Reconnecting…"); // offline or cut again: keep trying
+      }
+    }
+    setError("Lost touch with the designer. Reload the page to see the latest version.");
+  };
+
   /** Runs one agent turn. `onAccepted` fires as soon as the server takes (or refuses) the message. */
   const runTurn = async (body: Record<string, unknown>, onAccepted: (accepted: boolean) => void): Promise<void> => {
     setBusy(true);
@@ -242,8 +310,9 @@ export function Studio({ projectId }: { projectId: string }) {
     setStatus(null);
     setSelectedIds([]);
     const before = hist.current.committed ?? designRef.current;
+    let accepted = false;
     try {
-      let res = await post(body);
+      const res = await post(body);
       if (res.status === 402) {
         setPaywall(true);
         onAccepted(false);
@@ -255,26 +324,16 @@ export function Studio({ projectId }: { projectId: string }) {
         onAccepted(false);
         return;
       }
+      accepted = true;
       onAccepted(true);
-
-      // The agent may pause to look at the real render. Send it a snapshot and carry on.
-      for (let pass = 0; pass < 4; pass++) {
-        const wantsReview = await consume(res);
-        if (!wantsReview) break;
-        await new Promise((r) => setTimeout(r, 350));
-        let image: string | null = null;
-        try {
-          if (nodeRef.current && designRef.current) image = await renderPreview(nodeRef.current, designRef.current, 900, 0.82);
-        } catch {
-          image = null;
-        }
-        res = await post({ review: { image } });
-        if (!res.ok || !res.body) throw new Error("request_failed");
-      }
+      await drive(res);
     } catch {
-      setDraft("");
-      setError("The connection dropped while designing. Reload the page to see the latest version.");
-      onAccepted(true);
+      if (accepted) await reattach();
+      else {
+        // The request never reached the server.
+        setError("Couldn't reach Dzine. Check your connection and try again.");
+        onAccepted(false);
+      }
     } finally {
       setBusy(false);
       setStatus(null);
@@ -283,6 +342,25 @@ export function Studio({ projectId }: { projectId: string }) {
       setTimeout(() => void saveThumb(), 600);
     }
   };
+
+  /** After a reload mid-turn: show the turn as in progress and follow it to the end. */
+  const resume = async () => {
+    setBusy(true);
+    try {
+      await reattach();
+    } finally {
+      setBusy(false);
+      setStatus(null);
+      setTimeout(() => void saveThumb(), 600);
+    }
+  };
+
+  useEffect(() => {
+    if (!resumeOnLoad) return;
+    const t = setTimeout(() => void resume(), 0); // after the canvas has rendered, so a snapshot works
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeOnLoad]);
 
   const send = async (text: string, attachments: Attachment[]): Promise<boolean> => {
     if (credits !== null && credits <= 0) {
