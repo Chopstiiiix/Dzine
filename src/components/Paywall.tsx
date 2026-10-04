@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { type Pack, formatPrice } from "@/lib/config";
 
 export type Account = {
-  credits: number;
+  /** null while credits are switched off for testing. */
+  credits: number | null;
   demo: boolean;
   packs: Pack[];
   providers: { stripe: boolean; paystack: boolean };
@@ -28,7 +29,7 @@ export function Paywall({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const configured = providers.stripe || providers.paystack;
-  const out = account.credits <= 0;
+  const out = account.credits !== null && account.credits <= 0;
 
   useEffect(() => {
     const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();

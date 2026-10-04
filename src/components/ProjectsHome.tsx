@@ -17,7 +17,8 @@ export function ProjectsHome({
   demo,
 }: {
   projects: ProjectSummary[];
-  credits: number;
+  /** null while credits are switched off for testing. */
+  credits: number | null;
   email: string | null;
   demo: boolean;
 }) {
@@ -63,9 +64,11 @@ export function ProjectsHome({
           <Logo size={19} />
         </Link>
         <div className="flex items-center gap-3 text-[13px]">
-          <span className="rounded-full border border-line px-2.5 py-1 font-medium tabular-nums">
-            {credits} {credits === 1 ? "credit" : "credits"}
-          </span>
+          {credits !== null ? (
+            <span className="rounded-full border border-line px-2.5 py-1 font-medium tabular-nums">
+              {credits} {credits === 1 ? "credit" : "credits"}
+            </span>
+          ) : null}
           {demo ? (
             <span className="text-muted">Demo mode</span>
           ) : (
@@ -140,7 +143,7 @@ export function ProjectsHome({
                     type="button"
                     aria-label={`Delete ${p.title}`}
                     onClick={() => void remove(p.id)}
-                    className="absolute right-2 top-2 rounded-lg bg-panel/90 p-1.5 text-muted opacity-0 shadow-sm transition hover:text-danger focus:opacity-100 group-hover:opacity-100"
+                    className="absolute right-2 top-2 rounded-lg bg-panel/90 p-2 text-muted shadow-sm transition hover:text-danger focus:opacity-100 group-hover:opacity-100 [@media(hover:hover)]:p-1.5 [@media(hover:hover)]:opacity-0"
                   >
                     <Trash2 size={14} />
                   </button>

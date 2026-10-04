@@ -1,7 +1,7 @@
 import { runMockAgent } from "@/lib/agent/mock";
 import { type AgentEvent, type AgentInput, runAgent } from "@/lib/agent/run";
 import { TREATMENTS } from "@/lib/agent/type-treatments";
-import { serverConfig } from "@/lib/config";
+import { UNLIMITED_CREDITS, serverConfig } from "@/lib/config";
 import { badRequest, json, notFound, unauthorized } from "@/lib/http";
 import { RATIOS, getRatio } from "@/lib/ratios";
 import { NoCreditsError, getSession, grantCredits } from "@/lib/store";
@@ -41,12 +41,14 @@ export async function POST(req: Request) {
       await store.updateProject(project.id, { ratio: project.ratio });
     }
 
-    try {
-      credits = await store.spendCredit(project.id);
-      charged = true;
-    } catch (err) {
-      if (err instanceof NoCreditsError) return json({ error: "no_credits" }, 402);
-      throw err;
+    if (!UNLIMITED_CREDITS) {
+      try {
+        credits = await store.spendCredit(project.id);
+        charged = true;
+      } catch (err) {
+        if (err instanceof NoCreditsError) return json({ error: "no_credits" }, 402);
+        throw err;
+      }
     }
     await store.addMessage(project.id, { role: "user", content: text, attachments: attachmentIds });
     const style = TREATMENTS.some((t) => t.id === body.style) ? String(body.style) : undefined;

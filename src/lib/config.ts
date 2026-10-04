@@ -54,6 +54,9 @@ export const serverConfig = {
 /** Free generations for every new account. Keep in sync with dzine_ensure_profile() in the SQL. */
 export const FREE_CREDITS = 2;
 
+/** Testing switch: generations cost nothing and credit counts are hidden. Unset it to bring the limit back. */
+export const UNLIMITED_CREDITS = process.env.DZINE_UNLIMITED_CREDITS === "1";
+
 export type Pack = {
   id: string;
   name: string;
