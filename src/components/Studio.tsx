@@ -512,17 +512,20 @@ export function Studio({ projectId }: { projectId: string }) {
       {/* Left: the conversation */}
       <aside className="flex h-[52dvh] min-h-0 w-full shrink-0 flex-col border-t border-line bg-panel md:h-auto md:w-[400px] md:border-r md:border-t-0 lg:w-[430px]">
         <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line px-4">
-          <Link href="/studio" aria-label="Back to your designs" className="-ml-1.5 rounded-md p-2 text-muted transition hover:bg-soft hover:text-ink">
+          <Link href="/studio" aria-label="Back to your designs" data-tip="Your designs" data-tip-desc="Back to all your designs. This one is saved automatically." className="-ml-1.5 rounded-md p-2 text-muted transition hover:bg-soft hover:text-ink">
             <ArrowLeft size={17} />
           </Link>
           <Logo size={17} />
-          <span className="min-w-0 flex-1 truncate text-[13px] text-muted">{loaded ? title : ""}</span>
+          <span className="min-w-0 flex-1 truncate text-[13px] text-muted" data-tip={loaded ? title : undefined} data-tip-desc="Dzine names the design from your brief.">
+            {loaded ? title : ""}
+          </span>
           {credits !== null ? (
             <button
               type="button"
               onClick={() => setPaywall(true)}
               className="shrink-0 rounded-full border border-line px-2.5 py-1 text-[12px] font-medium tabular-nums transition hover:bg-soft"
-              title="Get more credits"
+              data-tip="Credits"
+              data-tip-desc="Each design or change from the agent uses 1 credit. Click to get more. Your own edits on the canvas are free."
             >
               {credits} {credits === 1 ? "credit" : "credits"}
             </button>
@@ -530,7 +533,7 @@ export function Studio({ projectId }: { projectId: string }) {
         </header>
 
         {notice ? (
-          <button type="button" onClick={() => setNotice(null)} className="border-b border-line bg-soft px-5 py-2.5 text-left text-[13px] text-ink">
+          <button type="button" onClick={() => setNotice(null)} data-tip="Click to dismiss" className="border-b border-line bg-soft px-5 py-2.5 text-left text-[13px] text-ink">
             {notice}
           </button>
         ) : null}
@@ -547,17 +550,18 @@ export function Studio({ projectId }: { projectId: string }) {
         <div className="flex h-14 shrink-0 items-center gap-2 px-3 md:px-4">
           <RatioPicker value={ratio} onPick={pickRatio} disabled={busy || !loaded} hasDesign={!!design} />
           <div className="ml-1 flex items-center">
-            <button type="button" title="Undo (⌘Z)" aria-label="Undo" onClick={undo} disabled={busy || !steps.undo} className={ICON_BTN}>
+            <button type="button" data-tip="Undo (⌘Z)" data-tip-desc="Step back one change. A whole reply from the agent counts as one step." aria-label="Undo" onClick={undo} disabled={busy || !steps.undo} className={ICON_BTN}>
               <Undo2 size={16} />
             </button>
-            <button type="button" title="Redo (⇧⌘Z)" aria-label="Redo" onClick={redo} disabled={busy || !steps.redo} className={ICON_BTN}>
+            <button type="button" data-tip="Redo (⇧⌘Z)" data-tip-desc="Bring back the change you just undid." aria-label="Redo" onClick={redo} disabled={busy || !steps.redo} className={ICON_BTN}>
               <Redo2 size={16} />
             </button>
           </div>
           <div className="flex-1" />
           <button
             type="button"
-            title="Layers"
+            data-tip="Layers"
+            data-tip-desc="Every layer in the design, top first. Pick ones hidden under others, Shift-click for several, or hide one with the eye."
             aria-label="Layers"
             aria-pressed={layersOpen}
             onClick={() => setLayersOpen((o) => !o)}
@@ -566,13 +570,15 @@ export function Studio({ projectId }: { projectId: string }) {
           >
             <Layers size={16} />
           </button>
-          <span className="hidden text-[12px] tabular-nums text-muted sm:inline">
+          <span className="hidden text-[12px] tabular-nums text-muted sm:inline" data-tip="Export size" data-tip-desc="The size in pixels of the PNG you'll download.">
             {outW} × {outH} px
           </span>
           <button
             type="button"
             onClick={() => void exportPng()}
             disabled={!design || busy || exporting}
+            data-tip="Download"
+            data-tip-desc="Save the design as a full-resolution PNG. On a phone this opens the share sheet so you can save it to Photos."
             className="flex h-9 items-center gap-2 rounded-lg bg-ink px-3.5 text-[13px] font-medium text-bg transition disabled:opacity-30"
           >
             <Download size={15} />
@@ -658,15 +664,15 @@ export function Studio({ projectId }: { projectId: string }) {
               )}
               {selected ? (
                 <>
-                  <button type="button" title="Send backward" aria-label="Send backward" onClick={() => shiftLayer(selected.id, -1)} className={ICON_BTN}>
+                  <button type="button" data-tip="Send backward" data-tip-desc="Move this layer one step behind the others." data-tip-side="top" aria-label="Send backward" onClick={() => shiftLayer(selected.id, -1)} className={ICON_BTN}>
                     <ArrowDown size={16} />
                   </button>
-                  <button type="button" title="Bring forward" aria-label="Bring forward" onClick={() => shiftLayer(selected.id, 1)} className={ICON_BTN}>
+                  <button type="button" data-tip="Bring forward" data-tip-desc="Move this layer one step in front of the others." data-tip-side="top" aria-label="Bring forward" onClick={() => shiftLayer(selected.id, 1)} className={ICON_BTN}>
                     <ArrowUp size={16} />
                   </button>
                 </>
               ) : null}
-              <button type="button" title="Delete" aria-label="Delete selected" onClick={removeSelected} className={`${ICON_BTN} hover:text-danger`}>
+              <button type="button" data-tip="Delete" data-tip-desc="Remove the selected layers. Undo brings them back." data-tip-side="top" aria-label="Delete selected" onClick={removeSelected} className={`${ICON_BTN} hover:text-danger`}>
                 <Trash2 size={16} />
               </button>
             </div>

@@ -65,14 +65,16 @@ export function ProjectsHome({
         </Link>
         <div className="flex items-center gap-3 text-[13px]">
           {credits !== null ? (
-            <span className="rounded-full border border-line px-2.5 py-1 font-medium tabular-nums">
+            <span className="rounded-full border border-line px-2.5 py-1 font-medium tabular-nums" data-tip="Credits" data-tip-desc="Each design or change from the agent uses 1 credit. Your own edits on the canvas are free.">
               {credits} {credits === 1 ? "credit" : "credits"}
             </span>
           ) : null}
           {demo ? (
-            <span className="text-muted">Demo mode</span>
+            <span className="text-muted" data-tip="Demo mode" data-tip-desc="No accounts or payments. Designs live in memory and are cleared when the server restarts.">
+              Demo mode
+            </span>
           ) : (
-            <button type="button" onClick={() => void signOut()} className="text-muted transition hover:text-ink" title={email ?? undefined}>
+            <button type="button" onClick={() => void signOut()} className="text-muted transition hover:text-ink" data-tip="Sign out" data-tip-desc={email ? `Signed in as ${email}` : undefined}>
               Sign out
             </button>
           )}
@@ -99,6 +101,8 @@ export function ProjectsHome({
                     type="button"
                     disabled={!!creating}
                     onClick={() => void create(r.id)}
+                    data-tip={`New ${r.label}`}
+                    data-tip-desc={`${r.hint}. Opens a blank canvas in this format; you can change it later.`}
                     className="group flex items-center gap-3 rounded-xl border border-line bg-panel px-3 py-2.5 text-left transition hover:border-faint disabled:opacity-60"
                   >
                     <span className="text-muted transition group-hover:text-accent">
@@ -125,7 +129,7 @@ export function ProjectsHome({
               const r = getRatio(p.ratio);
               return (
                 <div key={p.id} className="group relative">
-                  <Link href={`/studio/${p.id}`} className="block">
+                  <Link href={`/studio/${p.id}`} className="block" data-tip="Open" data-tip-desc="Carry on editing this design.">
                     <div className="flex aspect-square items-center justify-center overflow-hidden rounded-xl border border-line bg-soft p-4">
                       {p.thumb ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -142,6 +146,8 @@ export function ProjectsHome({
                   <button
                     type="button"
                     aria-label={`Delete ${p.title}`}
+                    data-tip="Delete design"
+                    data-tip-desc="Removes it for good."
                     onClick={() => void remove(p.id)}
                     className="absolute right-2 top-2 rounded-lg bg-panel/90 p-2 text-muted shadow-sm transition hover:text-danger focus:opacity-100 group-hover:opacity-100 [@media(hover:hover)]:p-1.5 [@media(hover:hover)]:opacity-0"
                   >

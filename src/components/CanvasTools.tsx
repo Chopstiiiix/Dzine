@@ -96,39 +96,39 @@ export function CanvasTools({
         aria-orientation="vertical"
         className="dz-scroll pointer-events-auto flex max-h-full flex-col gap-0.5 overflow-y-auto rounded-xl border border-line bg-panel p-1 shadow-lg"
       >
-        <Tool label="Select (A): click to pick, Shift-click to add, drag to move" active={tool === "select"} disabled={off} onClick={() => onTool("select")}>
+        <Tool label="Select (A)" desc="Click a layer to pick it, Shift-click to pick more, then drag to move. Full-size backgrounds stay put." active={tool === "select"} disabled={off} onClick={() => onTool("select")}>
           <MousePointer2 size={16} />
         </Tool>
-        <Tool label="Move (V): drag anything, backgrounds included" active={tool === "move"} disabled={off} onClick={() => onTool("move")}>
+        <Tool label="Move (V)" desc="Drag anything on the canvas to move it, backgrounds included." active={tool === "move"} disabled={off} onClick={() => onTool("move")}>
           <Move size={16} />
         </Tool>
-        <Tool label="Marquee (M): drag a box to select the layers inside it" active={tool === "marquee"} disabled={off} onClick={() => onTool("marquee")}>
+        <Tool label="Marquee (M)" desc="Drag a box on the canvas to select every layer fully inside it. Shift adds to the selection." active={tool === "marquee"} disabled={off} onClick={() => onTool("marquee")}>
           <SquareDashed size={16} />
         </Tool>
         <Sep />
-        <Tool label="Add text" disabled={off} onClick={() => onAdd("text")}>
+        <Tool label="Add text" desc="Drops a new text box in the middle. Change the words in the bar under the canvas." disabled={off} onClick={() => onAdd("text")}>
           <Type size={16} />
         </Tool>
-        <Tool label="Shapes" disabled={off} active={show === "shapes"} onClick={() => toggle("shapes")}>
+        <Tool label="Shapes" desc="Add a rectangle, circle, triangle, diamond, hexagon or star." disabled={off} active={show === "shapes"} onClick={() => toggle("shapes")}>
           <Shapes size={16} />
         </Tool>
         <Sep />
-        <Tool label={`Colour fill (${target})`} disabled={off || !can.fill} active={show === "fill"} onClick={() => toggle("fill")}>
+        <Tool label="Colour fill" desc={`Paint the ${target} one solid colour. With nothing selected, this colours the background.`} disabled={off || !can.fill} active={show === "fill"} onClick={() => toggle("fill")}>
           <PaintBucket size={16} />
         </Tool>
-        <Tool label={`Gradient (${target})`} disabled={off || !can.gradient} active={show === "gradient"} onClick={() => toggle("gradient")}>
+        <Tool label="Gradient" desc={`Blend two colours across the ${target}, at any angle.`} disabled={off || !can.gradient} active={show === "gradient"} onClick={() => toggle("gradient")}>
           <Droplet size={16} />
         </Tool>
-        <Tool label="Drop shadow" disabled={off || !can.shadow} active={show === "shadow"} onClick={() => toggle("shadow")}>
+        <Tool label="Drop shadow" desc="Give the selection a soft, lifted, hard or glowing shadow. Select a layer first." disabled={off || !can.shadow} active={show === "shadow"} onClick={() => toggle("shadow")}>
           <SunMedium size={16} />
         </Tool>
-        <Tool label="Opacity" disabled={off || !can.opacity} active={show === "opacity"} onClick={() => toggle("opacity")}>
+        <Tool label="Opacity" desc="Make the selection see-through. Select a layer first." disabled={off || !can.opacity} active={show === "opacity"} onClick={() => toggle("opacity")}>
           <Blend size={16} />
         </Tool>
-        <Tool label="Rotate and flip" disabled={off || !can.rotate} active={show === "rotate"} onClick={() => toggle("rotate")}>
+        <Tool label="Rotate and flip" desc="Turn the selection to any angle or in 90° steps, or mirror an image. Select a layer first." disabled={off || !can.rotate} active={show === "rotate"} onClick={() => toggle("rotate")}>
           <RotateCw size={16} />
         </Tool>
-        <Tool label="Remove background (one image)" disabled={off || selection.length !== 1 || images.length !== 1 || cutting} onClick={onCutout}>
+        <Tool label="Remove background" desc="Cut the subject out of a photo so it sits on the design. Select one image first." disabled={off || selection.length !== 1 || images.length !== 1 || cutting} onClick={onCutout}>
           {cutting ? <Loader2 size={16} className="animate-spin" /> : <Eraser size={16} />}
         </Tool>
       </div>
@@ -143,7 +143,7 @@ export function CanvasTools({
                   <button
                     key={s.kind}
                     type="button"
-                    title={s.label}
+                    data-tip={s.label}
                     aria-label={`Add ${s.label.toLowerCase()}`}
                     onClick={() => {
                       onAdd(s.kind);
@@ -261,11 +261,13 @@ function GradientPanel({ initial, target, onPick }: { initial: string; target: s
   );
 }
 
-function Tool({ label, active, disabled, onClick, children }: { label: string; active?: boolean; disabled?: boolean; onClick?: () => void; children: ReactNode }) {
+function Tool({ label, desc, active, disabled, onClick, children }: { label: string; desc: string; active?: boolean; disabled?: boolean; onClick?: () => void; children: ReactNode }) {
   return (
     <button
       type="button"
-      title={label}
+      data-tip={label}
+      data-tip-desc={desc}
+      data-tip-side="right"
       aria-label={label}
       aria-pressed={active}
       disabled={disabled}
@@ -281,7 +283,7 @@ function PanelButton({ label, disabled, onClick, children }: { label: string; di
   return (
     <button
       type="button"
-      title={label}
+      data-tip={label}
       aria-label={label}
       disabled={disabled}
       onClick={onClick}

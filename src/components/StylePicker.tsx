@@ -47,7 +47,9 @@ export function StylePicker({ ratio, value, onChange, disabled }: { ratio: strin
         type="button"
         disabled={disabled}
         onClick={() => setOpen(true)}
-        title="Choose a text style"
+        data-tip="Text style"
+        data-tip-desc="Pick a typography style for the agent to follow, or leave it on Auto and let Dzine choose."
+        data-tip-side="top"
         className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-2 text-[12.5px] font-medium text-muted transition hover:bg-soft hover:text-ink disabled:opacity-40"
       >
         <Palette size={16} />
@@ -88,7 +90,8 @@ export function StylePicker({ ratio, value, onChange, disabled }: { ratio: strin
                       key={s.id}
                       type="button"
                       aria-pressed={value?.id === s.id}
-                      title={s.use}
+                      data-tip={s.name}
+                      data-tip-desc={s.use}
                       onClick={() => pick(s)}
                       className={`flex flex-col gap-2 rounded-xl p-1.5 text-left transition hover:bg-soft ${value?.id === s.id ? "ring-2 ring-accent" : ""}`}
                     >

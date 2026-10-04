@@ -65,7 +65,9 @@ export function LayersPanel({
                 <button
                   type="button"
                   aria-label={hidden ? "Show layer" : "Hide layer"}
-                  title={hidden ? "Show" : "Hide"}
+                  data-tip={hidden ? "Show layer" : "Hide layer"}
+                  data-tip-desc="Hidden layers stay in the design but don't appear in the download."
+                  data-tip-side="left"
                   onClick={(e) => {
                     e.stopPropagation();
                     onToggleVisible(l);

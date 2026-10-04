@@ -220,7 +220,9 @@ export function ChatPanel({
                         type="button"
                         role="radio"
                         aria-checked={a.label === l.id}
-                        title={l.hint}
+                        data-tip={`Use as ${l.text.toLowerCase()}`}
+                        data-tip-desc={l.hint}
+                        data-tip-side="top"
                         onClick={() => setAttachments((prev) => prev.map((x) => (x.key === a.key ? { ...x, label: l.id } : x)))}
                         className={`rounded px-2 py-1 text-[11px] font-medium transition md:px-1.5 md:py-0.5 ${
                           a.label === l.id ? "bg-panel text-ink shadow-sm" : "text-muted hover:text-ink"
@@ -235,6 +237,8 @@ export function ChatPanel({
                 <button
                   type="button"
                   aria-label={`Remove ${a.file.name}`}
+                  data-tip="Remove image"
+                  data-tip-side="top"
                   onClick={() => {
                     URL.revokeObjectURL(a.preview);
                     setAttachments((prev) => prev.filter((x) => x.key !== a.key));
@@ -263,7 +267,9 @@ export function ChatPanel({
           <button
             type="button"
             aria-label="Add photos, logos or a reference"
-            title="Add photos, logos or a reference"
+            data-tip="Add images"
+            data-tip-desc="Attach photos, logos or a reference look. You can also drag images onto the chat or paste them."
+            data-tip-side="top"
             onClick={() => picker.current?.click()}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted transition hover:bg-soft hover:text-ink"
           >
@@ -287,6 +293,9 @@ export function ChatPanel({
           <button
             type="button"
             aria-label="Send"
+            data-tip="Send (Enter)"
+            data-tip-desc="Send your brief to the agent. Shift+Enter starts a new line."
+            data-tip-side="top"
             disabled={busy || (!text.trim() && !attachments.length)}
             onClick={() => void submit()}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ink text-bg transition disabled:opacity-25"

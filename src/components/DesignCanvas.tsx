@@ -490,7 +490,9 @@ export function DesignCanvas({ design, blank, assets, nodeRef, selectedIds = [],
                     <div aria-hidden className="absolute left-1/2 top-[-22px] h-[22px] w-px -translate-x-1/2 bg-[var(--accent)]" />
                     <div
                       aria-hidden
-                      title="Drag to rotate (Shift snaps to 15°)"
+                      data-tip="Rotate"
+                      data-tip-desc="Drag to turn the layer. It snaps to straight angles; hold Shift to snap every 15°."
+                      data-tip-side="top"
                       className="pointer-events-auto absolute left-1/2 top-[-36px] flex h-7 w-7 -translate-x-1/2 cursor-grab items-center justify-center"
                       style={{ touchAction: "none" }}
                       onPointerDown={(e) => onRotateDown(e, l)}

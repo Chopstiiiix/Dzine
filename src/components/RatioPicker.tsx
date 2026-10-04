@@ -61,6 +61,8 @@ export function RatioPicker({
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
+        data-tip="Format"
+        data-tip-desc={hasDesign ? "Change the size and shape. Dzine re-composes the layout for the new format (uses 1 credit)." : "Choose the size and shape of the design."}
         className="flex h-9 items-center gap-2 rounded-lg border border-line bg-panel pl-2 pr-2.5 text-[13px] font-medium text-ink transition hover:bg-soft disabled:opacity-50"
       >
         <span className="text-muted">
