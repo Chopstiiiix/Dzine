@@ -92,11 +92,16 @@ export function ChatPanel({
   const submit = async () => {
     const value = text.trim();
     if (busy || (!value && !attachments.length)) return;
-    const accepted = await onSend(value, attachments);
+    const sent = attachments;
+    setText("");
+    setAttachments([]);
+    const accepted = await onSend(value, sent);
     if (accepted) {
-      setText("");
-      attachments.forEach((a) => URL.revokeObjectURL(a.preview));
-      setAttachments([]);
+      sent.forEach((a) => URL.revokeObjectURL(a.preview));
+    } else {
+      // Refused: hand the prompt back unless they've started typing something new.
+      setText((t) => t || value);
+      setAttachments((a) => (a.length ? a : sent));
     }
   };
 
