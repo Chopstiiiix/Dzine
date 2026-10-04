@@ -129,11 +129,11 @@ export function ChatPanel({
         {empty ? (
           <div className="flex min-h-full flex-col justify-end pb-1">
             <h2 className="text-[22px] font-semibold leading-tight tracking-[-0.025em]">What are we making?</h2>
-            <p className="mt-2 text-[14px] leading-relaxed text-muted">
+            <p className="mt-2 hidden text-[14px] leading-relaxed text-muted md:block">
               Tell me what it&apos;s for and what it should say. Add your photos and logos, and drop in a reference if you have a look in mind.
             </p>
             <div className="mt-5 flex flex-col gap-1.5">
-              {IDEAS.map((idea) => (
+              {IDEAS.map((idea, i) => (
                 <button
                   key={idea}
                   type="button"
@@ -141,7 +141,7 @@ export function ChatPanel({
                     setText(idea);
                     input.current?.focus();
                   }}
-                  className="rounded-lg border border-line px-3 py-2 text-left text-[13px] leading-snug text-muted transition hover:border-faint hover:text-ink"
+                  className={`${i > 1 ? "hidden md:block" : ""} rounded-lg border border-line px-3 py-2 text-left text-[13px] leading-snug text-muted transition hover:border-faint hover:text-ink`}
                 >
                   {idea}
                 </button>
@@ -217,7 +217,7 @@ export function ChatPanel({
                         aria-checked={a.label === l.id}
                         title={l.hint}
                         onClick={() => setAttachments((prev) => prev.map((x) => (x.key === a.key ? { ...x, label: l.id } : x)))}
-                        className={`rounded px-1.5 py-0.5 text-[11px] font-medium transition ${
+                        className={`rounded px-2 py-1 text-[11px] font-medium transition md:px-1.5 md:py-0.5 ${
                           a.label === l.id ? "bg-panel text-ink shadow-sm" : "text-muted hover:text-ink"
                         }`}
                       >
@@ -234,7 +234,7 @@ export function ChatPanel({
                     URL.revokeObjectURL(a.preview);
                     setAttachments((prev) => prev.filter((x) => x.key !== a.key));
                   }}
-                  className="rounded p-1 text-faint hover:bg-soft hover:text-ink"
+                  className="rounded p-2 text-faint hover:bg-soft hover:text-ink md:p-1"
                 >
                   <X size={13} />
                 </button>
@@ -276,7 +276,8 @@ export function ChatPanel({
             }}
             placeholder={messages.length ? "Ask for a change…" : "Describe your design…"}
             aria-label="Message Dzine"
-            className="max-h-[180px] min-h-9 flex-1 resize-none bg-transparent px-1 py-2 text-[14px] leading-snug outline-none placeholder:text-faint"
+            enterKeyHint="send"
+            className="max-h-[180px] min-h-9 min-w-0 flex-1 resize-none bg-transparent px-1 py-2 text-[16px] leading-snug md:text-[14px] outline-none placeholder:text-faint"
           />
           <button
             type="button"

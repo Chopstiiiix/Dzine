@@ -86,7 +86,7 @@ export function LoginForm({ next, initialError }: { next: string; initialError: 
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="h-11 rounded-xl border border-line bg-panel px-3.5 text-[15px] font-normal outline-none transition focus:border-faint"
+                  className="h-11 rounded-xl border border-line bg-panel px-3.5 text-[16px] font-normal outline-none transition focus:border-faint"
                 />
               </label>
               <label className="flex flex-col gap-1.5 text-[13px] font-medium">
@@ -98,7 +98,7 @@ export function LoginForm({ next, initialError }: { next: string; initialError: 
                   autoComplete={mode === "signup" ? "new-password" : "current-password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-11 rounded-xl border border-line bg-panel px-3.5 text-[15px] font-normal outline-none transition focus:border-faint"
+                  className="h-11 rounded-xl border border-line bg-panel px-3.5 text-[16px] font-normal outline-none transition focus:border-faint"
                 />
               </label>
               {error ? (

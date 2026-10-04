@@ -53,7 +53,17 @@ export async function renderPreview(node: HTMLElement, design: Design, targetWid
   return toJpeg(node, { ...opts, quality, backgroundColor: "#ffffff" });
 }
 
-export function download(blob: Blob, filename: string) {
+export async function download(blob: Blob, filename: string) {
+  // On phones the share sheet is how a picture reaches Photos; a download link only reaches Files.
+  const file = new File([blob], filename, { type: blob.type });
+  if (matchMedia("(pointer: coarse)").matches && navigator.canShare?.({ files: [file] })) {
+    try {
+      return await navigator.share({ files: [file] });
+    } catch (err) {
+      if ((err as Error).name === "AbortError") return; // They closed the sheet.
+      // Otherwise (e.g. the tap "expired" during rendering) fall back to a plain download.
+    }
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

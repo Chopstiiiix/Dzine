@@ -354,7 +354,7 @@ export function Studio({ projectId }: { projectId: string }) {
     try {
       const scale = getRatio(design.ratio).scale;
       const blob = await renderPng(nodeRef.current, design, scale);
-      download(blob, `${slug(title)}-${Math.round(design.width * scale)}x${Math.round(design.height * scale)}.png`);
+      await download(blob, `${slug(title)}-${Math.round(design.width * scale)}x${Math.round(design.height * scale)}.png`);
       fetch(`/api/projects/${projectId}/learn`, { method: "POST" }).catch(() => {});
     } catch {
       setNotice("The export failed. Try again, or use Chrome if it keeps happening.");
@@ -385,7 +385,7 @@ export function Studio({ projectId }: { projectId: string }) {
       {/* Left: the conversation */}
       <aside className="flex h-[52dvh] min-h-0 w-full shrink-0 flex-col border-t border-line bg-panel md:h-auto md:w-[400px] md:border-r md:border-t-0 lg:w-[430px]">
         <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line px-4">
-          <Link href="/studio" aria-label="Back to your designs" className="-ml-1 rounded-md p-1.5 text-muted transition hover:bg-soft hover:text-ink">
+          <Link href="/studio" aria-label="Back to your designs" className="-ml-1.5 rounded-md p-2 text-muted transition hover:bg-soft hover:text-ink">
             <ArrowLeft size={17} />
           </Link>
           <Logo size={17} />
@@ -478,7 +478,7 @@ export function Studio({ projectId }: { projectId: string }) {
                   rows={Math.min(4, (selected as TextLayer).text.split("\n").length)}
                   onChange={(e) => updateLayer(selected.id, { text: e.target.value || " " } as Partial<Layer>)}
                   onKeyDown={(e) => e.key === "Escape" && setSelectedId(null)}
-                  className="min-h-9 flex-1 resize-none rounded-lg bg-soft px-2.5 py-2 text-[13px] leading-snug outline-none"
+                  className="min-h-9 min-w-0 flex-1 resize-none rounded-lg bg-soft px-2.5 py-2 text-[16px] leading-snug outline-none md:text-[13px]"
                 />
               ) : (
                 <span className="flex h-9 flex-1 items-center truncate px-2 text-[13px] text-muted">
