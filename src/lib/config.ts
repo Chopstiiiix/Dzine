@@ -23,6 +23,8 @@ export const serverConfig = {
   mfluxDir: process.env.DZINE_MFLUX_DIR || `${process.env.HOME}/.local/bin`,
   /** Long side in pixels of locally generated images. Higher is sharper and slower. */
   localImageSize: Number(process.env.DZINE_LOCAL_IMAGE_SIZE || 1536),
+  /** New images on NVIDIA's hosted API, e.g. black-forest-labs/flux.2-klein-4b. Uses the DZINE_LLM_API_KEYS. */
+  nvidiaImageModel: process.env.DZINE_NVIDIA_IMAGE_MODEL || "",
   cutoutModel: process.env.DZINE_CUTOUT_MODEL || "fal-ai/birefnet/v2",
   /** AI images the agent may create in a single turn. Caps the cost of one credit. */
   maxImagesPerTurn: Number(process.env.DZINE_MAX_IMAGES_PER_TURN || 3),

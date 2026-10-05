@@ -320,7 +320,11 @@ export async function runAgent(run: AgentRun): Promise<void> {
       ...(serverConfig.thinking ? { thinking: { type: "adaptive" as const, display: "omitted" as const } } : {}),
     };
     const llm = serverConfig.llm;
-    const stream = llm ? openaiStream(params, llm, () => client.messages.stream(params)) : client.messages.stream(params);
+    const fallback = () => {
+      if (!serverConfig.hasAnthropic) throw new Error("Every design model is busy right now.");
+      return client.messages.stream(params);
+    };
+    const stream = llm ? openaiStream(params, llm, fallback) : client.messages.stream(params);
 
     const live = new Map<number, { name: string; json: string; layers: number; at: number }>();
     const ids = new Set(assetById.keys());

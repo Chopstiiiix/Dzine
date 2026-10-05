@@ -9,7 +9,8 @@ import type { Asset } from "@/lib/design/types";
 import type { Store } from "@/lib/store/types";
 
 // AI imagery: generation, photo transformation and background removal through fal.ai,
-// or generation on this Mac through mflux (DZINE_LOCAL_IMAGES=1, no API key).
+// or generation on this Mac through mflux (DZINE_LOCAL_IMAGES=1, no API key),
+// or new images on NVIDIA's free API (DZINE_NVIDIA_IMAGE_MODEL), with edits still going to fal when it is set up.
 // With neither, every call returns a labelled placeholder so the rest of the app still works.
 
 export type ImageResult = { data: Buffer; mime: string; width: number | null; height: number | null };
@@ -105,6 +106,32 @@ async function generateLocal(input: { store: Store; prompt: string; aspect: stri
   }
 }
 
+// ponytail: round-robins the designer's NVIDIA keys; give images their own key list if they start hitting rate limits.
+let nextKey = 0;
+
+/** New images on NVIDIA's hosted FLUX.2 Klein. Its free API caps output near one megapixel and can't edit uploads. */
+async function generateNvidia(input: { prompt: string; aspect: string }): Promise<ImageResult> {
+  const keys = serverConfig.llm?.keys ?? [];
+  if (!keys.length) throw new Error("NVIDIA image generation needs DZINE_LLM_API_KEYS.");
+  const [a, b] = input.aspect.split(":").map(Number);
+  const scale = Math.sqrt((1024 * 1024) / ((a || 1) * (b || 1)));
+  const floor16 = (n: number) => Math.floor(n / 16) * 16;
+  const width = floor16((a || 1) * scale);
+  const height = floor16((b || 1) * scale);
+  const res = await fetch(`https://ai.api.nvidia.com/v1/genai/${serverConfig.nvidiaImageModel}`, {
+    method: "POST",
+    signal: AbortSignal.timeout(120_000),
+    headers: { Authorization: `Bearer ${keys[nextKey++ % keys.length]}`, Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt: input.prompt, width, height, steps: 4, seed: Math.floor(Math.random() * 2 ** 31) }),
+  });
+  if (!res.ok) throw new Error(`Image model ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const art = (await res.json())?.artifacts?.[0];
+  if (art?.finishReason !== "SUCCESS" || !art.base64) throw new Error(`The image model returned no image (${art?.finishReason ?? "empty"}). Try a different prompt.`);
+  const data = Buffer.from(art.base64, "base64");
+  const size = imageSize(data, "image/jpeg");
+  return { data, mime: "image/jpeg", width: size?.width ?? width, height: size?.height ?? height };
+}
+
 function hash(s: string) {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
@@ -143,6 +170,12 @@ export async function generateImage(input: {
   sources: Asset[];
 }): Promise<ImageResult & { placeholder?: boolean }> {
   if (serverConfig.localImages) return generateLocal(input);
+  if (serverConfig.nvidiaImageModel && !(input.sources.length && serverConfig.hasFal)) {
+    if (input.sources.length) {
+      throw new Error("Editing existing images isn't available. Generate a fresh image from the prompt alone and place the user's image as its own layer.");
+    }
+    return generateNvidia(input);
+  }
   if (!serverConfig.hasFal) return { ...placeholder(input.prompt, input.aspect), placeholder: true };
 
   const sourceUrls = await Promise.all(input.sources.map((a) => publicUrl(input.store, a)));
