@@ -29,6 +29,23 @@ export const serverConfig = {
   /** Times per turn the agent gets to look at the real render and fix it. */
   reviewPasses: Number(process.env.DZINE_REVIEW_PASSES || 1),
   thinking: process.env.DZINE_THINKING !== "off",
+  /**
+   * Run the designer on an OpenAI-compatible API (e.g. NVIDIA). Models are tried in order, each given
+   * DZINE_LLM_WAIT_SECONDS to start answering; if none does, the Anthropic client (DZINE_AGENT_MODEL) takes over.
+   * Comma-separated keys are used in turn to spread rate limits.
+   */
+  get llm() {
+    const baseUrl = process.env.DZINE_LLM_BASE_URL;
+    const list = (v?: string) => (v ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+    const models = list(process.env.DZINE_LLM_MODELS);
+    if (!baseUrl || !models.length) return null;
+    return {
+      baseUrl,
+      keys: list(process.env.DZINE_LLM_API_KEYS),
+      models,
+      waitMs: Number(process.env.DZINE_LLM_WAIT_SECONDS || 20) * 1000,
+    };
+  },
   get hasAnthropic() {
     return !!process.env.ANTHROPIC_API_KEY && process.env.DZINE_MOCK !== "1";
   },

@@ -78,7 +78,7 @@ export async function POST(req: Request) {
 
       try {
         const run = { store, project, ratio: getRatio(project.ratio), input, emit, progress };
-        await (serverConfig.hasAnthropic ? runAgent(run) : runMockAgent(run));
+        await (serverConfig.hasAnthropic || serverConfig.llm ? runAgent(run) : runMockAgent(run));
       } catch (err) {
         console.error("[dzine] agent turn failed", err);
         let refunded = false;

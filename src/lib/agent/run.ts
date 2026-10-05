@@ -9,6 +9,7 @@ import { describeFont, searchFonts } from "@/lib/fonts";
 import { referenceBlock } from "./examples";
 import { TREATMENTS, treatmentBlock, treatmentMenu } from "./type-treatments";
 import { generateImage, removeBackground } from "./images";
+import { openaiStream } from "./openai-compat";
 import { findLinks, imageFromLink } from "./links";
 import { SYSTEM_PROMPT, TEMPLATE_MODE_PROMPT, contextBlock } from "./prompt";
 import { COMPOSE_TOOL, DESIGN_TOOLS, TOOLS, TOOL_STATUS } from "./tools";
@@ -302,7 +303,7 @@ export async function runAgent(run: AgentRun): Promise<void> {
   // ------------------------------------------------------------ the loop
 
   for (let step = 0; step < MAX_STEPS; step++) {
-    const stream = client.messages.stream({
+    const params: Anthropic.MessageStreamParams = {
       model: serverConfig.agentModel,
       max_tokens: 24000,
       system: [
@@ -317,7 +318,9 @@ export async function runAgent(run: AgentRun): Promise<void> {
       tools,
       messages: trimHistory(history),
       ...(serverConfig.thinking ? { thinking: { type: "adaptive" as const, display: "omitted" as const } } : {}),
-    });
+    };
+    const llm = serverConfig.llm;
+    const stream = llm ? openaiStream(params, llm, () => client.messages.stream(params)) : client.messages.stream(params);
 
     const live = new Map<number, { name: string; json: string; layers: number; at: number }>();
     const ids = new Set(assetById.keys());
